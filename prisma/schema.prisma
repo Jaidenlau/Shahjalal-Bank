@@ -1,0 +1,1062 @@
+// Vertex ERP — Prisma schema
+// Demo build for Shahjalal Islami Bank PLC (SJIBL), Common Services Division.
+//
+// CONVENTIONS
+//  * All money is stored as POISHA (1 BDT = 100 poisha) in BigInt columns.
+//    Never floats. BigInt rather than Int because a 32-bit column caps out at
+//    ~BDT 2.14 crore in poisha, which a bank's property insurance cover and
+//    large civil works contracts exceed. Prisma accepts a plain number on
+//    write; reads come back as bigint and are narrowed at the data-access
+//    boundary by num() in lib/money.ts. Format only at the display layer.
+//  * SQLite has no native enum support in Prisma, so enum-like columns are
+//    String and constrained in TypeScript (see src/lib/enums.ts).
+//  * Every state-changing mutation writes an AuditLog row in the SAME
+//    transaction. See src/lib/audit.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./vertex.db"
+}
+
+// ---------------------------------------------------------------------------
+// IDENTITY AND ACCESS
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  employeeId   String   @unique
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  designation  String
+  userType     String   @default("INTERNAL") // INTERNAL | VENDOR
+  isActive     Boolean  @default(true)
+  phone        String?
+  createdAt    DateTime @default(now())
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  branchId     String?
+  branch       Branch?     @relation(fields: [branchId], references: [id])
+
+  roles                UserRole[]
+  vendorUser           VendorUser?
+  requisitions         Requisition[]        @relation("RequisitionRequestedBy")
+  workflowActions      WorkflowAction[]
+  auditLogs            AuditLog[]
+  committeeMemberships CommitteeMember[]
+  notifications        Notification[]
+  tendersCreated       Tender[]             @relation("TenderCreatedBy")
+  posIssued            PurchaseOrder[]      @relation("PoIssuedBy")
+  grnsReceived         GoodsReceiptNote[]   @relation("GrnReceivedBy")
+  workflowDefinitions  WorkflowDefinition[] @relation("WorkflowCreatedBy")
+  technicalPartsOpened BidTechnicalPart[]   @relation("TechnicalOpenedBy")
+  financialPartsOpened BidFinancialPart[]   @relation("FinancialOpenedBy")
+  savedReports         SavedReport[]
+
+  @@index([departmentId])
+  @@index([branchId])
+}
+
+model Role {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  code         String  @unique
+  description  String
+  isSystemRole Boolean @default(false)
+  rank         Int     @default(0) // seniority, used for ordering approval tiers
+
+  users            UserRole[]
+  permissions      RolePermission[]
+  workflowSteps    WorkflowStep[]
+  committeeMembers CommitteeMember[]
+}
+
+model Permission {
+  id          String @id @default(cuid())
+  module      String // matches Module code in lib/modules.ts
+  action      String // CREATE | VIEW | APPROVE | EVALUATE | EXPORT | CONFIGURE
+  description String
+
+  roles RolePermission[]
+
+  @@unique([module, action])
+  @@index([module])
+}
+
+model UserRole {
+  id     String @id @default(cuid())
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model Department {
+  id             String @id @default(cuid())
+  name           String
+  code           String @unique
+  costCenterCode String
+
+  users        User[]
+  requisitions Requisition[]
+  budgets      Budget[]
+  assets       Asset[]
+}
+
+model Branch {
+  id           String  @id @default(cuid())
+  name         String
+  code         String  @unique
+  district     String
+  address      String?
+  isHeadOffice Boolean @default(false)
+
+  users        User[]
+  requisitions Requisition[]
+  assets       Asset[]
+  visitors     Visitor[]
+}
+
+// ---------------------------------------------------------------------------
+// VENDORS
+// ---------------------------------------------------------------------------
+
+model Vendor {
+  id                   String    @id @default(cuid())
+  companyName          String
+  tradeLicenseNo       String    @unique
+  tradeLicenseExpiry   DateTime
+  tin                  String
+  bin                  String
+  contactPerson        String
+  contactPhone         String
+  contactEmail         String
+  address              String
+  enlistmentStatus     String    @default("PENDING") // PENDING | APPROVED | REJECTED | SUSPENDED
+  enlistedAt           DateTime?
+  incomeTaxSubmittedAt DateTime?
+  createdAt            DateTime  @default(now())
+
+  categories     VendorCategory[]
+  users          VendorUser[]
+  documents      VendorDocument[]
+  bids           Bid[]
+  purchaseOrders PurchaseOrder[]
+  invoices       Invoice[]
+  contracts      Contract[]
+}
+
+model VendorCategory {
+  id       String @id @default(cuid())
+  vendorId String
+  category String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, category])
+}
+
+model VendorUser {
+  id       String @id @default(cuid())
+  userId   String @unique
+  vendorId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+}
+
+model VendorDocument {
+  id         String    @id @default(cuid())
+  vendorId   String
+  docType    String
+  fileName   String
+  fileSize   Int       @default(0) // bytes
+  uploadedAt DateTime  @default(now())
+  verifiedBy String?
+  verifiedAt DateTime?
+  vendor     Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+}
+
+// ---------------------------------------------------------------------------
+// CATALOGUE AND STOCK
+// ---------------------------------------------------------------------------
+
+model ItemCategory {
+  id       String         @id @default(cuid())
+  name     String
+  code     String         @unique
+  parentId String?
+  parent   ItemCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children ItemCategory[] @relation("CategoryTree")
+  items    Item[]
+}
+
+model Item {
+  id            String  @id @default(cuid())
+  code          String  @unique
+  name          String
+  categoryId    String
+  unitOfMeasure String
+  capexOpex     String // CAPEX | OPEX
+  glCode        String
+  reorderLevel  Int     @default(0)
+  specification String?
+
+  category         ItemCategory        @relation(fields: [categoryId], references: [id])
+  stockBalances    StockBalance[]
+  requisitionLines RequisitionLine[]
+  poLines          PurchaseOrderLine[]
+
+  @@index([categoryId])
+}
+
+model Warehouse {
+  id       String @id @default(cuid())
+  name     String
+  code     String @unique
+  location String
+  capacity Int    @default(0)
+
+  stockBalances StockBalance[]
+}
+
+model StockBalance {
+  id                    String    @id @default(cuid())
+  itemId                String
+  warehouseId           String
+  quantityOnHand        Int       @default(0)
+  quantityInTransit     Int       @default(0)
+  quantityUnderPurchase Int       @default(0)
+  lastPurchasePrice     BigInt    @default(0) // poisha
+  lastPurchaseDate      DateTime?
+
+  item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, warehouseId])
+  @@index([itemId])
+}
+
+// ---------------------------------------------------------------------------
+// REQUISITIONS
+// ---------------------------------------------------------------------------
+
+model Requisition {
+  id                  String    @id @default(cuid())
+  requisitionNo       String    @unique
+  type                String // PRE_FACTO | POST_FACTO | REPAIR_MAINTENANCE | AUCTION
+  title               String
+  requestedById       String
+  departmentId        String
+  branchId            String
+  status              String    @default("DRAFT")
+  totalEstimatedValue BigInt    @default(0) // poisha
+  justification       String
+  costCenterCode      String
+  createdAt           DateTime  @default(now())
+  submittedAt         DateTime?
+  closedAt            DateTime?
+
+  requestedBy User       @relation("RequisitionRequestedBy", fields: [requestedById], references: [id])
+  department  Department @relation(fields: [departmentId], references: [id])
+  branch      Branch     @relation(fields: [branchId], references: [id])
+
+  lines          RequisitionLine[]
+  tenderLinks    TenderRequisition[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([status])
+  @@index([requestedById])
+  @@index([departmentId])
+}
+
+model RequisitionLine {
+  id                 String  @id @default(cuid())
+  requisitionId      String
+  itemId             String
+  quantity           Int
+  estimatedUnitPrice BigInt // poisha
+  fulfilmentRoute    String  @default("TO_PURCHASE") // FROM_STORE | TO_PURCHASE
+  quantityFromStore  Int     @default(0)
+  quantityToPurchase Int     @default(0)
+  remarks            String?
+
+  requisition Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  item        Item        @relation(fields: [itemId], references: [id])
+
+  @@index([requisitionId])
+}
+
+// ---------------------------------------------------------------------------
+// TENDERING
+// ---------------------------------------------------------------------------
+
+model Tender {
+  id                               String    @id @default(cuid())
+  tenderNo                         String    @unique
+  title                            String
+  description                      String    @default("")
+  method                           String // OTM | LTM | QM | DPM | TWO_STAGE
+  envelopeSystem                   String    @default("TWO") // SINGLE | TWO
+  status                           String    @default("DRAFT")
+  estimatedValue                   BigInt    @default(0) // poisha
+  createdById                      String
+  createdAt                        DateTime  @default(now())
+  publishedAt                      DateTime?
+  closingAt                        DateTime?
+  closedAt                         DateTime?
+  technicalEvaluationCompletedAt   DateTime?
+  technicalEvaluationCompletedById String?
+  awardedAt                        DateTime?
+  awardedBidId                     String?
+
+  createdBy User @relation("TenderCreatedBy", fields: [createdById], references: [id])
+
+  documents             TenderDocument[]
+  committees            Committee[]
+  bids                  Bid[]
+  requisitionLinks      TenderRequisition[]
+  comparativeStatements ComparativeStatement[]
+  purchaseOrders        PurchaseOrder[]
+
+  @@index([status])
+}
+
+model TenderRequisition {
+  id            String      @id @default(cuid())
+  tenderId      String
+  requisitionId String
+  tender        Tender      @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+
+  @@unique([tenderId, requisitionId])
+}
+
+model TenderDocument {
+  id       String @id @default(cuid())
+  tenderId String
+  section  String // NOTICE | TECHNICAL_SPEC | FINANCIAL_FORMAT | SCOPE | TERMS | ELIGIBILITY
+  title    String
+  content  String
+  fileName String
+  fileSize Int    @default(0)
+  sequence Int    @default(0)
+  tender   Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([tenderId])
+}
+
+model Committee {
+  id       String @id @default(cuid())
+  tenderId String
+  type     String // PURCHASE | OPENING | TECHNICAL_EVALUATION
+  name     String
+  tender   Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  members CommitteeMember[]
+
+  @@unique([tenderId, type])
+}
+
+model CommitteeMember {
+  id          String    @id @default(cuid())
+  committeeId String
+  userId      String
+  roleId      String?
+  isChair     Boolean   @default(false)
+  signedOffAt DateTime?
+
+  committee Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+  role      Role?     @relation(fields: [roleId], references: [id])
+
+  @@unique([committeeId, userId])
+}
+
+model Bid {
+  id                 String    @id @default(cuid())
+  tenderId           String
+  vendorId           String
+  status             String    @default("SUBMITTED") // SUBMITTED | TECHNICAL_QUALIFIED | TECHNICAL_DISQUALIFIED | AWARDED
+  intentionToBidAt   DateTime?
+  submittedAt        DateTime?
+  technicalScore     Int?
+  evaluationComments String?
+  evaluatedAt        DateTime?
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+
+  technicalPart  BidTechnicalPart?
+  financialPart  BidFinancialPart?
+  purchaseOrders PurchaseOrder[]
+
+  @@unique([tenderId, vendorId])
+  @@index([tenderId])
+}
+
+model BidTechnicalPart {
+  id          String    @id @default(cuid())
+  bidId       String    @unique
+  content     String
+  documents   String    @default("[]") // JSON array of {fileName, fileSize}
+  submittedAt DateTime?
+  openedAt    DateTime?
+  openedById  String?
+
+  bid      Bid   @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  openedBy User? @relation("TechnicalOpenedBy", fields: [openedById], references: [id])
+}
+
+/// TWO-ENVELOPE CONTROL.
+/// Reads of this model MUST go through src/lib/sealed-bids.ts, which refuses
+/// to return data while the parent Tender has technicalEvaluationCompletedAt
+/// as null. Do not query this model directly from a route or component.
+model BidFinancialPart {
+  id                           String    @id @default(cuid())
+  bidId                        String    @unique
+  totalAmount                  BigInt // poisha
+  lineItems                    String    @default("[]") // JSON array
+  currency                     String    @default("BDT")
+  documents                    String    @default("[]")
+  sealedUntilTechnicalComplete Boolean   @default(true)
+  submittedAt                  DateTime?
+  openedAt                     DateTime?
+  openedById                   String?
+
+  bid      Bid   @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  openedBy User? @relation("FinancialOpenedBy", fields: [openedById], references: [id])
+}
+
+model ComparativeStatement {
+  id             String   @id @default(cuid())
+  tenderId       String
+  generatedAt    DateTime @default(now())
+  generatedById  String
+  rows           String   @default("[]") // JSON: [{vendorId, vendorName, technicalResult, technicalScore, financialTotal, rank}]
+  recommendation String   @default("")
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([tenderId])
+}
+
+// ---------------------------------------------------------------------------
+// PURCHASE AND RECEIPT
+// ---------------------------------------------------------------------------
+
+model PurchaseOrder {
+  id                  String    @id @default(cuid())
+  poNo                String    @unique
+  tenderId            String?
+  bidId               String?
+  vendorId            String
+  sourceRequisitionId String?
+  approvalReference   String? // the WorkflowInstance id that approved the requisition
+  status              String    @default("DRAFT")
+  subtotal            BigInt    @default(0) // poisha
+  totalAmount         BigInt    @default(0) // poisha
+  deliveryTerms       String    @default("")
+  deliveryDueAt       DateTime?
+  issuedAt            DateTime?
+  issuedById          String?
+  createdAt           DateTime  @default(now())
+
+  tender      Tender?      @relation(fields: [tenderId], references: [id])
+  bid         Bid?         @relation(fields: [bidId], references: [id])
+  vendor      Vendor       @relation(fields: [vendorId], references: [id])
+  requisition Requisition? @relation(fields: [sourceRequisitionId], references: [id])
+  issuedBy    User?        @relation("PoIssuedBy", fields: [issuedById], references: [id])
+
+  lines    PurchaseOrderLine[]
+  grns     GoodsReceiptNote[]
+  invoices Invoice[]
+
+  @@index([status])
+  @@index([vendorId])
+}
+
+model PurchaseOrderLine {
+  id        String @id @default(cuid())
+  poId      String
+  itemId    String
+  quantity  Int
+  unitPrice BigInt // poisha
+  lineTotal BigInt // poisha
+
+  po       PurchaseOrder      @relation(fields: [poId], references: [id], onDelete: Cascade)
+  item     Item               @relation(fields: [itemId], references: [id])
+  grnLines GoodsReceiptLine[]
+
+  @@index([poId])
+}
+
+model GoodsReceiptNote {
+  id                String   @id @default(cuid())
+  grnNo             String   @unique
+  poId              String
+  receivedAt        DateTime @default(now())
+  receivedById      String
+  deliveryChallanNo String
+  status            String   @default("FULL") // FULL | PARTIAL
+  remarks           String?
+
+  po         PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  receivedBy User          @relation("GrnReceivedBy", fields: [receivedById], references: [id])
+
+  lines    GoodsReceiptLine[]
+  invoices Invoice[]
+
+  @@index([poId])
+}
+
+model GoodsReceiptLine {
+  id               String  @id @default(cuid())
+  grnId            String
+  poLineId         String
+  quantityReceived Int
+  quantityAccepted Int
+  quantityRejected Int     @default(0)
+  remarks          String?
+
+  grn    GoodsReceiptNote  @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  poLine PurchaseOrderLine @relation(fields: [poLineId], references: [id])
+
+  @@index([grnId])
+}
+
+// ---------------------------------------------------------------------------
+// INVOICING AND PAYMENT
+// ---------------------------------------------------------------------------
+
+model Invoice {
+  id              String    @id @default(cuid())
+  invoiceNo       String    @unique
+  vendorInvoiceNo String
+  poId            String
+  grnId           String?
+  vendorId        String
+  amount          BigInt // poisha, net of VAT
+  vatRateBp       Int       @default(1500) // basis points, 1500 = 15%
+  vatAmount       BigInt    @default(0)
+  aitRateBp       Int       @default(300) // 3%
+  taxDeducted     BigInt    @default(0)
+  securityDeposit BigInt    @default(0)
+  netPayable      BigInt    @default(0)
+  status          String    @default("RECEIVED")
+  matchStatus     String    @default("NOT_RUN") // NOT_RUN | MATCHED | MISMATCH
+  matchReport     String    @default("[]") // JSON
+  receivedAt      DateTime  @default(now())
+  paidAt          DateTime?
+
+  po     PurchaseOrder     @relation(fields: [poId], references: [id])
+  grn    GoodsReceiptNote? @relation(fields: [grnId], references: [id])
+  vendor Vendor            @relation(fields: [vendorId], references: [id])
+
+  @@index([status])
+  @@index([vendorId])
+}
+
+model Budget {
+  id              String @id @default(cuid())
+  financialYear   String
+  departmentId    String
+  glCode          String
+  allocatedAmount BigInt // poisha
+  consumedAmount  BigInt @default(0)
+  committedAmount BigInt @default(0)
+
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@unique([financialYear, departmentId, glCode])
+}
+
+// ---------------------------------------------------------------------------
+// WORKFLOW ENGINE
+// ---------------------------------------------------------------------------
+
+model WorkflowDefinition {
+  id           String    @id @default(cuid())
+  name         String
+  documentType String // REQUISITION | TENDER | PURCHASE_ORDER | INVOICE | CONTRACT
+  version      Int       @default(1)
+  isActive     Boolean   @default(true)
+  description  String    @default("")
+  createdById  String
+  createdAt    DateTime  @default(now())
+  supersededAt DateTime?
+
+  createdBy User @relation("WorkflowCreatedBy", fields: [createdById], references: [id])
+
+  steps     WorkflowStep[]
+  instances WorkflowInstance[]
+
+  @@unique([documentType, version])
+  @@index([documentType, isActive])
+}
+
+model WorkflowStep {
+  id                   String @id @default(cuid())
+  workflowDefinitionId String
+  sequence             Int
+  name                 String
+  conditionType        String @default("ALWAYS") // ALWAYS | AMOUNT_ABOVE | AMOUNT_BELOW | DEPARTMENT_IS | CATEGORY_IS
+  conditionValue       String @default("")
+  requiredRoleId       String
+  actionType           String @default("APPROVE") // APPROVE | REVIEW | ACKNOWLEDGE
+  escalationHours      Int    @default(48)
+
+  definition   WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+  requiredRole Role               @relation(fields: [requiredRoleId], references: [id])
+
+  @@unique([workflowDefinitionId, sequence])
+}
+
+model WorkflowInstance {
+  id                   String    @id @default(cuid())
+  workflowDefinitionId String
+  workflowVersion      Int // PINNED at creation. A document in flight keeps its rules.
+  documentType         String
+  documentId           String
+  status               String    @default("IN_PROGRESS") // IN_PROGRESS | APPROVED | REJECTED | RETURNED
+  currentStepSequence  Int       @default(1)
+  initiatedById        String
+  startedAt            DateTime  @default(now())
+  completedAt          DateTime?
+
+  definition   WorkflowDefinition     @relation(fields: [workflowDefinitionId], references: [id])
+  actions      WorkflowAction[]
+  plannedSteps WorkflowInstanceStep[]
+
+  @@index([documentType, documentId])
+  @@index([status])
+}
+
+/// Snapshot of the steps that applied to THIS instance at creation time,
+/// resolved against the document. This is what makes version pinning visible:
+/// editing the definition later never rewrites these rows.
+model WorkflowInstanceStep {
+  id               String  @id @default(cuid())
+  instanceId       String
+  sequence         Int
+  name             String
+  conditionType    String
+  conditionValue   String
+  requiredRoleId   String
+  requiredRoleName String
+  actionType       String
+  escalationHours  Int     @default(48)
+  applies          Boolean @default(true)
+  skipReason       String?
+
+  instance WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@unique([instanceId, sequence])
+}
+
+model WorkflowAction {
+  id                 String   @id @default(cuid())
+  workflowInstanceId String
+  stepSequence       Int
+  actedById          String
+  action             String // APPROVED | REJECTED | RETURNED
+  comments           String   @default("")
+  actedAt            DateTime @default(now())
+
+  instance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  actedBy  User             @relation(fields: [actedById], references: [id])
+
+  @@index([workflowInstanceId])
+}
+
+// ---------------------------------------------------------------------------
+// AUDIT — append only, hash chained
+// ---------------------------------------------------------------------------
+
+/// APPEND ONLY. There is no update or delete path for any role, including
+/// administrators. Each row carries the SHA-256 hash of its own canonical
+/// content plus the previous row's hash, forming a tamper-evident chain that
+/// can be verified end to end. See src/lib/audit.ts.
+model AuditLog {
+  /// Integer primary key: the chain is ordered by insertion, and the hash of
+  /// each row incorporates the previous row's hash. Gaps or reordering are
+  /// therefore detectable.
+  id              Int      @id @default(autoincrement())
+  entityType      String
+  entityId        String
+  entityLabel     String   @default("")
+  action          String
+  performedById   String?
+  performedByName String
+  performedByRole String
+  previousValue   String? // JSON
+  newValue        String? // JSON
+  ipAddress       String   @default("10.10.4.0")
+  timestamp       DateTime @default(now())
+  previousHash    String   @default("")
+  hash            String   @default("")
+
+  performedBy User? @relation(fields: [performedById], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([performedById])
+  @@index([timestamp])
+}
+
+// ---------------------------------------------------------------------------
+// NOTIFICATIONS
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  title      String
+  body       String
+  channel    String   @default("IN_APP") // IN_APP | EMAIL | SMS
+  entityType String?
+  entityId   String?
+  link       String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+// ---------------------------------------------------------------------------
+// INTEGRATION STATUS (mock panel — no live connections)
+// ---------------------------------------------------------------------------
+
+model IntegrationEndpoint {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  name        String
+  description String
+  status      String    @default("CONNECTED") // CONNECTED | DEGRADED | PENDING_CONFIGURATION
+  direction   String    @default("BIDIRECTIONAL")
+  protocol    String    @default("REST/HTTPS")
+  lastSyncAt  DateTime?
+  latencyMs   Int       @default(0)
+  apiContract String    @default("[]") // JSON array of endpoint specs
+  note        String    @default("")
+  sequence    Int       @default(0)
+}
+
+// ---------------------------------------------------------------------------
+// REPORTS
+// ---------------------------------------------------------------------------
+
+model SavedReport {
+  id          String   @id @default(cuid())
+  name        String
+  entity      String
+  columns     String   @default("[]") // JSON
+  filters     String   @default("[]") // JSON
+  createdById String
+  createdAt   DateTime @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// P1 / P2 MODULES — populated so every navigation item lands somewhere real
+// ---------------------------------------------------------------------------
+
+model Asset {
+  id                      String    @id @default(cuid())
+  assetTag                String    @unique
+  name                    String
+  category                String
+  serialNo                String?
+  location                String
+  branchId                String?
+  departmentId            String?
+  purchaseDate            DateTime
+  purchaseCost            BigInt // poisha
+  depreciationRateBp      Int       @default(2000) // 20% pa
+  accumulatedDepreciation BigInt    @default(0)
+  bookValue               BigInt    @default(0)
+  status                  String    @default("IN_USE") // IN_USE | UNDER_REPAIR | RETIRED | DISPOSED
+  warrantyExpiry          DateTime?
+  specification           String    @default("")
+
+  branch      Branch?            @relation(fields: [branchId], references: [id])
+  department  Department?        @relation(fields: [departmentId], references: [id])
+  maintenance AssetMaintenance[]
+}
+
+model AssetMaintenance {
+  id          String    @id @default(cuid())
+  assetId     String
+  workOrderNo String    @unique
+  type        String // PREVENTIVE | CORRECTIVE
+  description String
+  reportedAt  DateTime
+  completedAt DateTime?
+  cost        BigInt    @default(0)
+  status      String    @default("OPEN") // OPEN | IN_PROGRESS | COMPLETED
+  vendorName  String?
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+}
+
+model Contract {
+  id                  String   @id @default(cuid())
+  contractNo          String   @unique
+  title               String
+  vendorId            String
+  type                String // AMC | SERVICE | SUPPLY | LEASE
+  value               BigInt // poisha
+  startDate           DateTime
+  endDate             DateTime
+  status              String   @default("ACTIVE") // DRAFT | UNDER_APPROVAL | ACTIVE | EXPIRED | TERMINATED
+  performanceSecurity BigInt   @default(0)
+  retentionMoney      BigInt   @default(0)
+  slaTerms            String   @default("")
+  renewalNoticeDays   Int      @default(60)
+
+  vendor     Vendor              @relation(fields: [vendorId], references: [id])
+  milestones ContractMilestone[]
+}
+
+model ContractMilestone {
+  id         String   @id @default(cuid())
+  contractId String
+  name       String
+  dueDate    DateTime
+  amount     BigInt   @default(0)
+  status     String   @default("PENDING") // PENDING | COMPLETED | OVERDUE
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+}
+
+model Vehicle {
+  id              String   @id @default(cuid())
+  registrationNo  String   @unique
+  make            String
+  model           String
+  year            Int
+  type            String
+  assignedTo      String?
+  driverName      String?
+  branchName      String
+  status          String   @default("ACTIVE")
+  taxTokenExpiry  DateTime
+  fitnessExpiry   DateTime
+  insuranceExpiry DateTime
+  odometerKm      Int      @default(0)
+
+  trips    VehicleTrip[]
+  fuelLogs FuelLog[]
+}
+
+model VehicleTrip {
+  id          String    @id @default(cuid())
+  vehicleId   String
+  tripNo      String    @unique
+  purpose     String
+  origin      String
+  destination String
+  startedAt   DateTime
+  endedAt     DateTime?
+  distanceKm  Int       @default(0)
+  requestedBy String
+  status      String    @default("COMPLETED")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+}
+
+model FuelLog {
+  id         String   @id @default(cuid())
+  vehicleId  String
+  filledAt   DateTime
+  litres     Int // stored x100 for 2dp
+  costAmount BigInt // poisha
+  odometerKm Int
+  station    String
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+}
+
+model Visitor {
+  id             String    @id @default(cuid())
+  visitorNo      String    @unique
+  fullName       String
+  company        String
+  phone          String
+  nid            String?
+  purpose        String
+  hostName       String
+  hostDepartment String
+  branchId       String?
+  checkInAt      DateTime
+  checkOutAt     DateTime?
+  badgeNo        String
+  isBlacklisted  Boolean   @default(false)
+  photoInitials  String    @default("")
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+}
+
+model VisitorAppointment {
+  id          String   @id @default(cuid())
+  visitorName String
+  company     String
+  hostName    String
+  scheduledAt DateTime
+  purpose     String
+  status      String   @default("SCHEDULED") // SCHEDULED | ARRIVED | CANCELLED | NO_SHOW
+}
+
+model CanteenOrder {
+  id            String   @id @default(cuid())
+  orderNo       String   @unique
+  employeeName  String
+  employeeId    String
+  department    String
+  items         String   @default("[]") // JSON
+  totalAmount   BigInt // poisha
+  orderedAt     DateTime
+  servingSlot   String
+  status        String   @default("PLACED") // PLACED | PREPARING | SERVED | CANCELLED
+  paymentStatus String   @default("PENDING_GATEWAY")
+}
+
+model MedicalItem {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  name           String
+  category       String
+  unitOfMeasure  String
+  quantityOnHand Int       @default(0)
+  reorderLevel   Int       @default(0)
+  expiryDate     DateTime?
+  batchNo        String?
+  supplier       String?
+}
+
+model InsurancePolicy {
+  id           String   @id @default(cuid())
+  policyNo     String   @unique
+  type         String // VEHICLE | LOCKER | VAULT | PROPERTY | FIDELITY
+  insurer      String
+  coveredAsset String
+  sumInsured   BigInt // poisha
+  premium      BigInt // poisha
+  startDate    DateTime
+  endDate      DateTime
+  status       String   @default("ACTIVE")
+
+  claims InsuranceClaim[]
+}
+
+model InsuranceClaim {
+  id            String    @id @default(cuid())
+  claimNo       String    @unique
+  policyId      String
+  incidentDate  DateTime
+  description   String
+  claimedAmount BigInt
+  settledAmount BigInt    @default(0)
+  status        String    @default("SUBMITTED") // SUBMITTED | UNDER_REVIEW | SETTLED | REJECTED
+  settledAt     DateTime?
+
+  policy InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+}
+
+model BuildingUtility {
+  id          String   @id @default(cuid())
+  site        String
+  utilityType String // ELECTRICITY | WATER | GAS | GENERATOR | LIFT | HVAC
+  meterNo     String?
+  readingDate DateTime
+  consumption Int      @default(0)
+  costAmount  BigInt   @default(0)
+  status      String   @default("OPERATIONAL")
+  vendorName  String?
+}
+
+model PreventiveMaintenanceSchedule {
+  id             String    @id @default(cuid())
+  scheduleNo     String    @unique
+  site           String
+  equipment      String
+  frequency      String // MONTHLY | QUARTERLY | HALF_YEARLY | ANNUAL
+  lastServicedAt DateTime?
+  nextDueAt      DateTime
+  assignedVendor String?
+  status         String    @default("SCHEDULED")
+}
+
+model DispatchNote {
+  id              String    @id @default(cuid())
+  dispatchNo      String    @unique
+  gatePassNo      String
+  itemDescription String
+  quantity        Int
+  fromLocation    String
+  toLocation      String
+  dispatchedAt    DateTime
+  deliveredAt     DateTime?
+  receivedBy      String?
+  carrier         String
+  status          String    @default("IN_TRANSIT") // PENDING_APPROVAL | IN_TRANSIT | DELIVERED | DELAYED | DAMAGED
+  podFileName     String?
+}
+
+model AuctionLot {
+  id           String   @id @default(cuid())
+  lotNo        String   @unique
+  title        String
+  category     String
+  description  String
+  reservePrice BigInt // poisha
+  startsAt     DateTime
+  endsAt       DateTime
+  status       String   @default("OPEN") // DRAFT | OPEN | CLOSED | AWARDED
+  winningBidId String?
+
+  bids AuctionBid[]
+}
+
+model AuctionBid {
+  id          String   @id @default(cuid())
+  lotId       String
+  bidderAlias String // anonymous bidding
+  amount      BigInt
+  placedAt    DateTime
+
+  lot AuctionLot @relation(fields: [lotId], references: [id], onDelete: Cascade)
+}
+
+model CivilWorksProject {
+  id                    String    @id @default(cuid())
+  projectNo             String    @unique
+  title                 String
+  site                  String
+  contractor            String
+  boqValue              BigInt
+  startDate             DateTime
+  targetEndDate         DateTime
+  actualEndDate         DateTime?
+  progressPct           Int       @default(0)
+  status                String    @default("IN_PROGRESS")
+  liabilityPeriodEndsAt DateTime?
+}

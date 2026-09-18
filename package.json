@@ -1,0 +1,41 @@
+{
+  "name": "vertex-erp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vertex ERP — Enterprise ERP & Integrated Workflow Platform. Demo build for Shahjalal Islami Bank PLC.",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:push": "prisma db push --skip-generate",
+    "db:generate": "prisma generate",
+    "seed": "tsx prisma/seed.ts",
+    "reset": "rm -f prisma/vertex.db prisma/vertex.db-journal && prisma db push --skip-generate --accept-data-loss && tsx prisma/seed.ts",
+    "setup": "prisma generate && npm run reset",
+    "verify": "tsx scripts/verify-controls.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.2",
+    "next": "15.5.25",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.25",
+    "prisma": "^6.16.2",
+    "tailwindcss": "^4",
+    "tsx": "^4.20.3",
+    "typescript": "^5"
+  }
+}
