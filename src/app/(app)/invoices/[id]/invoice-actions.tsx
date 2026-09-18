@@ -7,10 +7,16 @@ import { Card, Icon, buttonClass } from "@/components/ui";
 import { ControlRefusal, SuccessBanner, type Refusal } from "@/components/control-refusal";
 
 export function InvoiceActions({
-  invoiceId, status, matchStatus, canEvaluate, canApprove, workflowOpen, stepName, requiredRole,
+  invoiceId, status, matchStatus, canEvaluate, canAction, canPay, workflowOpen, stepName, requiredRole,
 }: {
   invoiceId: string; status: string; matchStatus: string;
-  canEvaluate: boolean; canApprove: boolean; workflowOpen: boolean;
+  /** May re-run the match. */
+  canEvaluate: boolean;
+  /** Holds the role the CURRENT workflow step names. */
+  canAction: boolean;
+  /** May release payment on an approved invoice. */
+  canPay: boolean;
+  workflowOpen: boolean;
   stepName: string; requiredRole: string;
 }) {
   const [comments, setComments] = useState("");
@@ -30,8 +36,8 @@ export function InvoiceActions({
     });
   };
 
-  const showApproval = workflowOpen && canApprove;
-  const showPayment = status === "APPROVED" && canApprove;
+  const showApproval = workflowOpen && canAction;
+  const showPayment = status === "APPROVED" && canPay;
   const showRematch = canEvaluate;
 
   if (!showApproval && !showPayment && !showRematch && !refusal && !success) return null;

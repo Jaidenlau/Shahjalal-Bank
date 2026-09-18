@@ -58,8 +58,10 @@ export default async function RequisitionDetail({
   // this is the control that fires, and the room sees it fire. Hiding the
   // button would be easier and would demonstrate nothing — the claim in the bid
   // is that the system refuses, not that the interface declines to offer.
-  const canApproveHere = holdsRole && can(user, "REQUISITION", "APPROVE");
-  const showApproval = Boolean(isOpen) && (canApproveHere || isMaker);
+  // Holding the role the current step names is the authority to action it,
+  // which is exactly what the workflow engine checks. Requiring a separate
+  // module permission on top would let the interface and the engine disagree.
+  const showApproval = Boolean(isOpen) && (holdsRole || isMaker);
 
   const fromStore = req.lines.reduce((s, l) => s + l.quantityFromStore, 0);
   const toPurchase = req.lines.reduce((s, l) => s + l.quantityToPurchase, 0);

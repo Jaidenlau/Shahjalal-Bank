@@ -223,6 +223,13 @@ export async function seedCore(db: PrismaClient) {
       designation: "Deputy Managing Director", dept: "CSD", branch: "CHO", roles: ["MANAGING_DIRECTOR"] },
     { employeeId: "SJIBL/2210", fullName: "Kamrun Nahar", email: "kamrun.nahar@sjiblbd.com",
       designation: "Vice President", dept: "FAD", branch: "CHO", roles: ["FINANCE_MANAGER"] },
+    // A second Finance Officer. Without one the invoice chain deadlocks: the
+    // officer who enters a bill is its maker, so maker-checker correctly
+    // refuses her own verification of it, and there would be nobody else
+    // holding the role to act. Two officers in a bills section is also simply
+    // how the function is staffed.
+    { employeeId: "SJIBL/3612", fullName: "Sumaiya Haque", email: "sumaiya.haque@sjiblbd.com",
+      designation: "Officer", dept: "FAD", branch: "CHO", roles: ["FINANCE_OFFICER"] },
     { employeeId: "SJIBL/1188", fullName: "Golam Mostafa", email: "golam.mostafa@sjiblbd.com",
       designation: "Executive Vice President", dept: "FAD", branch: "CHO", roles: ["CFO"] },
     { employeeId: "SJIBL/3927", fullName: "Sharmin Akhter", email: "sharmin.akhter@sjiblbd.com",
@@ -239,6 +246,12 @@ export async function seedCore(db: PrismaClient) {
       designation: "Senior Officer", dept: "GBD", branch: "AGR", roles: ["REQ_INITIATOR"] },
     { employeeId: "SJIBL/2077", fullName: "Shafiqul Alam", email: "shafiqul.alam@sjiblbd.com",
       designation: "Vice President", dept: "ITD", branch: "CHO", roles: ["DEPT_HEAD"] },
+    // Deputy Head of Procurement. The Procurement Head both approves tenders
+    // and work orders AND can raise them, so a single holder would deadlock
+    // anything that holder raised.
+    { employeeId: "SJIBL/2418", fullName: "Rafiqul Islam", email: "rafiqul.islam@sjiblbd.com",
+      designation: "Senior Assistant Vice President", dept: "CSD", branch: "CHO",
+      roles: ["PROCUREMENT_HEAD"] },
   ];
   for (const u of extras) {
     const created = await db.user.create({

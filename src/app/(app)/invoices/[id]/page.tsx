@@ -102,7 +102,11 @@ export default async function InvoiceDetail({ params }: { params: Promise<{ id: 
             status={inv.status}
             matchStatus={inv.matchStatus}
             canEvaluate={can(user, "INVOICE", "EVALUATE")}
-            canApprove={can(user, "INVOICE", "APPROVE") && holdsRole}
+            // Holding the role the step names is the authority to action it.
+            // That is the check the workflow engine enforces, so the interface
+            // uses the same one rather than a second, divergent rule.
+            canAction={holdsRole}
+            canPay={can(user, "INVOICE", "APPROVE")}
             workflowOpen={chain?.instance.status === "IN_PROGRESS"}
             stepName={currentStep?.name ?? ""}
             requiredRole={currentStep?.requiredRoleName ?? ""}

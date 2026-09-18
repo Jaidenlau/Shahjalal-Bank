@@ -318,6 +318,82 @@ async function main() {
   else bad("seeded mismatch invoice", "none found");
 
   // -------------------------------------------------------------------------
+  console.log("\n  6b. Approval chains are completable");
+  // -------------------------------------------------------------------------
+  // Maker-checker means a document cannot be actioned by the person who raised
+  // it. A chain therefore deadlocks when the ONLY holder of an approving role
+  // is also someone who can create that kind of document: they raise it, and
+  // then nobody — including them — can action the step.
+  //
+  // A sole Managing Director is not a problem, because Managing Directors do
+  // not raise requisitions. A sole Finance Officer is, because the officer who
+  // enters a bill is its maker. This is the check that would have caught the
+  // invoice chain stalling without a browser run.
+
+  const DOC_MODULE: Record<string, string> = {
+    REQUISITION: "REQUISITION", TENDER: "TENDER",
+    PURCHASE_ORDER: "PO", INVOICE: "INVOICE", CONTRACT: "CONTRACT",
+  };
+
+  const activeDefs = await db.workflowDefinition.findMany({
+    where: { isActive: true },
+    include: {
+      steps: {
+        orderBy: { sequence: "asc" },
+        include: {
+          requiredRole: {
+            include: {
+              users: { include: { user: { select: { id: true, fullName: true } } } },
+              permissions: { include: { permission: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const deadlocks: string[] = [];
+  for (const def of activeDefs) {
+    const module = DOC_MODULE[def.documentType];
+    for (const step of def.steps) {
+      const holders = step.requiredRole.users;
+      const canCreate = step.requiredRole.permissions.some(
+        p => p.permission.module === module && p.permission.action === "CREATE");
+      if (holders.length === 0) {
+        deadlocks.push(`${def.name} v${def.version} step ${step.sequence} (${step.requiredRole.name}): nobody holds this role`);
+      } else if (holders.length === 1 && canCreate) {
+        deadlocks.push(
+          `${def.name} v${def.version} step ${step.sequence}: ${step.requiredRole.name} has one holder ` +
+          `(${holders[0]!.user.fullName}) who can also create a ${def.documentType.toLowerCase().replace(/_/g, " ")}`);
+      }
+    }
+  }
+
+  if (deadlocks.length === 0) {
+    ok("no active workflow step can deadlock under maker-checker",
+       `${activeDefs.length} definitions, ${activeDefs.reduce((n, d) => n + d.steps.length, 0)} steps checked`);
+  } else {
+    bad("workflow steps cannot deadlock", deadlocks.join("; "));
+  }
+
+  // And nothing currently in approval is stuck right now.
+  const inFlight = await db.workflowInstance.findMany({
+    where: { status: "IN_PROGRESS" },
+    include: { plannedSteps: true },
+  });
+  const stuck: string[] = [];
+  for (const inst of inFlight) {
+    const step = inst.plannedSteps.find(s => s.sequence === inst.currentStepSequence && s.applies);
+    if (!step) continue;
+    const actionable = await db.userRole.count({
+      where: { roleId: step.requiredRoleId, userId: { not: inst.initiatedById } },
+    });
+    if (actionable === 0) stuck.push(`${inst.documentType} ${inst.documentId.slice(-8)} at "${step.name}"`);
+  }
+  if (stuck.length === 0) ok("nothing currently in approval is stuck", `${inFlight.length} documents in flight`);
+  else bad("documents in approval are actionable", stuck.join("; "));
+
+  // -------------------------------------------------------------------------
   console.log("\n  7. Seed coherence");
   // -------------------------------------------------------------------------
   // Nobody tests a demo's seed data, and it is exactly what a curious reviewer
