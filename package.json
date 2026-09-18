@@ -33,6 +33,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.25",
+    "playwright-core": "^1.63.0",
     "prisma": "^6.16.2",
     "tailwindcss": "^4",
     "tsx": "^4.20.3",

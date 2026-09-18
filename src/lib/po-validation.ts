@@ -1,6 +1,6 @@
 import type { Tx } from "./db";
 import { PurchaseOrderMismatchError } from "./errors";
-import { formatBDT } from "./money";
+import { formatBDT, num } from "./money";
 
 /**
  * PURCHASE ORDER / REQUISITION MATCHING
@@ -56,7 +56,7 @@ export async function buildValidationContext(
       itemCode: line.item.code,
       itemName: line.item.name,
       quantity: qty,
-      estimatedUnitPrice: line.estimatedUnitPrice,
+      estimatedUnitPrice: num(line.estimatedUnitPrice),
     });
   }
 

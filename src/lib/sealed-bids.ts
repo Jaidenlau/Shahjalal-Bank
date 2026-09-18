@@ -2,6 +2,7 @@ import { prisma } from "./db";
 import type { Tx } from "./db";
 import { FinancialSealedError } from "./errors";
 import { writeAudit } from "./audit";
+import { num } from "./money";
 
 /**
  * TWO-ENVELOPE TENDERING — THE SEAL
@@ -110,7 +111,7 @@ export async function listFinancialParts(tenderId: string, client: Tx = prisma):
         vendorId: b.vendor.id,
         vendorName: b.vendor.companyName,
         sealed: false,
-        totalAmount: fp.totalAmount,
+        totalAmount: num(fp.totalAmount),
         currency: fp.currency,
         lineItems,
         submittedAt: fp.submittedAt,
@@ -166,7 +167,7 @@ export async function readFinancialPart(bidId: string, client: Tx = prisma): Pro
     vendorId: bid.vendor.id,
     vendorName: bid.vendor.companyName,
     sealed: false,
-    totalAmount: fp.totalAmount,
+    totalAmount: num(fp.totalAmount),
     currency: fp.currency,
     lineItems,
     submittedAt: fp.submittedAt,
@@ -205,7 +206,7 @@ export async function openFinancialEnvelope(
         performedById: actor.id,
         performedByName: actor.fullName,
         performedByRole: actor.roleName,
-        newValue: { vendor: bid.vendor.companyName, totalAmount: view.totalAmount, openedBy: actor.fullName },
+        newValue: { vendor: bid.vendor.companyName, totalAmount: num(view.totalAmount), openedBy: actor.fullName },
       });
     }
 

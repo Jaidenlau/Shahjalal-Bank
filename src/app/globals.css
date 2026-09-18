@@ -1,26 +1,149 @@
 @import "tailwindcss";
 
+/*
+ * Vertex ERP — design tokens.
+ *
+ * Two constraints drove this palette and type scale:
+ *
+ *  1. The venue may have no usable internet, so there are no webfonts and no
+ *     external stylesheets. Everything is a system font stack.
+ *  2. It is presented on a projector at 1280x720. Body text is larger than a
+ *     desktop application would normally use, borders are a full step darker
+ *     than a typical light UI, and nothing critical relies on hue alone.
+ *
+ * The green is drawn from Shahjalal Islami Bank's own brand mark.
+ */
+
+@theme {
+  --color-ink-950: #0a1410;
+  --color-ink-900: #12211b;
+  --color-ink-800: #1d3329;
+  --color-ink-700: #2c4a3c;
+  --color-ink-600: #456558;
+  --color-ink-500: #6b8579;
+  --color-ink-400: #94a9a0;
+  --color-ink-300: #bccac4;
+  --color-ink-200: #dae3df;
+  --color-ink-100: #eaf0ed;
+  --color-ink-50:  #f5f8f6;
+
+  --color-brand-900: #063527;
+  --color-brand-800: #08472F;
+  --color-brand-700: #0a5a3c;
+  --color-brand-600: #0d6e49;
+  --color-brand-500: #12855a;
+  --color-brand-400: #2ba173;
+  --color-brand-300: #6cc5a1;
+  --color-brand-200: #a9e0c8;
+  --color-brand-100: #d6f0e5;
+  --color-brand-50:  #edfaf4;
+
+  --color-gold-700: #7a5c10;
+  --color-gold-600: #9a7615;
+  --color-gold-500: #c19a29;
+  --color-gold-400: #dfb94a;
+  --color-gold-100: #fbf1d6;
+  --color-gold-50:  #fdf9ee;
+
+  --color-danger-700: #8f1d1d;
+  --color-danger-600: #b02525;
+  --color-danger-500: #d13a3a;
+  --color-danger-100: #fbe3e3;
+  --color-danger-50:  #fdf1f1;
+
+  --color-warn-700: #8a5108;
+  --color-warn-600: #b06a0c;
+  --color-warn-500: #d98b1f;
+  --color-warn-100: #fdeed6;
+  --color-warn-50:  #fef8ee;
+
+  --color-info-700: #14507e;
+  --color-info-600: #1a6aa6;
+  --color-info-500: #2a87c9;
+  --color-info-100: #dcedf9;
+  --color-info-50:  #f0f7fc;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas,
+    "DejaVu Sans Mono", monospace;
+
+  --radius-card: 6px;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink-50);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  /* Projector legibility: a notch larger than a desktop app would use. */
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The taka sign and Bengali glyphs are absent from some Linux system stacks;
+   naming the fallbacks keeps ৳ from rendering as a box on a borrowed laptop. */
+.taka, .money {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-sans), "Noto Sans Bengali", "Nirmala UI", "Vrinda", sans-serif;
+}
+
+/* Tabular figures everywhere numbers are compared down a column. */
+table td, table th, .tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--color-brand-200);
+  color: var(--color-brand-900);
+}
+
+/* Focus rings must survive a projector. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Scrollbars: visible enough to show there is more content, quiet enough not
+   to distract on a large screen. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-300) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--color-ink-300);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track { background: transparent; }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; font-size: 12px; }
+  .print-page { box-shadow: none !important; border: 0 !important; margin: 0 !important; }
+  @page { margin: 14mm; }
+}
+
+/* Used by the sealed-envelope panel: a subtle diagonal hatch reads as
+   "withheld" without needing a colour the projector may wash out. */
+.hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-ink-100) 0,
+    var(--color-ink-100) 8px,
+    var(--color-ink-50) 8px,
+    var(--color-ink-50) 16px
+  );
 }

@@ -211,7 +211,7 @@ export async function seedCore(db: PrismaClient) {
         phone: u.phone,
         departmentId: dept[u.dept]!.id,
         branchId: branch[u.branch]!.id,
-        roles: { create: u.roles.map(r => ({ roleId: role[r]!.id })) },
+        roles: { create: u.roles.map((r, i) => ({ roleId: role[r]!.id, sequence: i })) },
       },
     });
     users[u.fullName] = created;
@@ -246,7 +246,7 @@ export async function seedCore(db: PrismaClient) {
         employeeId: u.employeeId, fullName: u.fullName, email: u.email, passwordHash: password,
         designation: u.designation, userType: "INTERNAL",
         departmentId: dept[u.dept]!.id, branchId: branch[u.branch]!.id,
-        roles: { create: u.roles.map(r => ({ roleId: role[r]!.id })) },
+        roles: { create: u.roles.map((r, i) => ({ roleId: role[r]!.id, sequence: i })) },
       },
     });
     users[u.fullName] = created;

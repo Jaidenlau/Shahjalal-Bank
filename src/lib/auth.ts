@@ -101,6 +101,7 @@ async function loadUser(userId: string): Promise<SessionUser | null> {
       branch: true,
       vendorUser: { include: { vendor: true } },
       roles: {
+        orderBy: { sequence: "asc" },
         include: {
           role: { include: { permissions: { include: { permission: true } } } },
         },
@@ -116,7 +117,8 @@ async function loadUser(userId: string): Promise<SessionUser | null> {
     }
   }
 
-  const roles = u.roles.map(r => r.role).sort((a, b) => b.rank - a.rank);
+  // Already ordered by sequence: the first is the capacity this user acts in.
+  const roles = u.roles.map(r => r.role);
 
   return {
     id: u.id,

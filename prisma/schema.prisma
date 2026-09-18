@@ -89,11 +89,17 @@ model Permission {
 }
 
 model UserRole {
-  id     String @id @default(cuid())
-  userId String
-  roleId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  userId   String
+  roleId   String
+  /// Display order. A user may legitimately hold several roles; the one at
+  /// sequence 0 is the capacity they act in day to day, and it is what the top
+  /// bar and audit rows record. Ranking by seniority instead would show the
+  /// Common Services department head as "Purchase Committee", which is a role
+  /// she holds but not the one she approves requisitions in.
+  sequence Int    @default(0)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
 }
