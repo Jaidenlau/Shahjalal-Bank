@@ -20,28 +20,69 @@ import { seedSystem } from "./seed/70-system";
 
 const db = new PrismaClient();
 
-/** Delete in dependency order. SQLite has no TRUNCATE CASCADE. */
+/**
+ * Clear every table, children before parents.
+ *
+ * This runs IN PLACE rather than deleting the database file, because the demo
+ * is reset between rehearsals while the application is running. Replacing the
+ * file leaves any open connection pointing at a removed inode and every
+ * subsequent write fails with SQLITE_READONLY_DBMOVED — which would surface
+ * mid-demo as the system silently refusing to save anything.
+ *
+ * The order below is therefore load-bearing and is asserted by running a reset
+ * twice in a row. Contracts, invoices and work orders all reference a vendor,
+ * so vendors come after them; assets and visitors reference a branch, so
+ * branches come last.
+ */
 async function clear() {
   const order = [
+    // Cross-cutting records that point at almost everything.
     "auditLog", "notification", "savedReport", "integrationEndpoint",
-    "workflowAction", "workflowInstanceStep", "workflowInstance", "workflowStep", "workflowDefinition",
-    "goodsReceiptLine", "goodsReceiptNote", "invoice", "purchaseOrderLine", "purchaseOrder",
+    // Workflow.
+    "workflowAction", "workflowInstanceStep", "workflowInstance",
+    "workflowStep", "workflowDefinition",
+    // Purchase to payment.
+    "goodsReceiptLine", "goodsReceiptNote", "invoice",
+    "purchaseOrderLine", "purchaseOrder",
+    // Tendering.
     "comparativeStatement", "bidFinancialPart", "bidTechnicalPart", "bid",
     "committeeMember", "committee", "tenderDocument", "tenderRequisition", "tender",
+    // Requisitions and catalogue.
     "requisitionLine", "requisition", "budget",
-    "stockBalance", "item", "itemCategory", "warehouse",
+    // ItemCategory references itself AND is referenced by Item, so items go
+    // first, then sub-categories, then the parents they hang from.
+    "stockBalance", "item", "__itemCategoryTree", "warehouse",
+    // Facilities and asset modules — these reference vendors, branches and
+    // departments, so they must precede all three.
+    "auctionBid", "auctionLot",
+    "insuranceClaim", "insurancePolicy",
+    "assetMaintenance", "asset",
+    "contractMilestone", "contract",
+    "fuelLog", "vehicleTrip", "vehicle",
+    "visitorAppointment", "visitor",
+    "canteenOrder", "medicalItem", "buildingUtility",
+    "preventiveMaintenanceSchedule", "dispatchNote", "civilWorksProject",
+    // Vendors, only once nothing references them.
     "vendorDocument", "vendorUser", "vendorCategory", "vendor",
-    "auctionBid", "auctionLot", "insuranceClaim", "insurancePolicy",
-    "assetMaintenance", "asset", "contractMilestone", "contract",
-    "fuelLog", "vehicleTrip", "vehicle", "visitorAppointment", "visitor",
-    "canteenOrder", "medicalItem", "buildingUtility", "preventiveMaintenanceSchedule",
-    "dispatchNote", "civilWorksProject",
-    "rolePermission", "userRole", "permission", "role", "user", "department", "branch",
+    // Identity last.
+    "rolePermission", "userRole", "permission", "role", "user",
+    "department", "branch",
   ] as const;
+
   for (const model of order) {
+    if (model === "__itemCategoryTree") {
+      await db.itemCategory.deleteMany({ where: { parentId: { not: null } } });
+      await db.itemCategory.deleteMany({});
+      continue;
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (db as any)[model].deleteMany({});
   }
+
+  // A stale row anywhere means the order above is wrong and the next seed would
+  // fail on a unique constraint instead, which is far harder to diagnose.
+  const left = await db.vendor.count() + await db.user.count() + await db.item.count();
+  if (left > 0) throw new Error(`clear() left ${left} rows behind; the delete order is wrong.`);
 }
 
 function step(n: string) {

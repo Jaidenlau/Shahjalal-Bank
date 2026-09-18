@@ -12,9 +12,10 @@
     "db:push": "prisma db push --skip-generate",
     "db:generate": "prisma generate",
     "seed": "tsx prisma/seed.ts",
-    "reset": "rm -f prisma/vertex.db prisma/vertex.db-journal && prisma db push --skip-generate --accept-data-loss && tsx prisma/seed.ts",
-    "setup": "prisma generate && npm run reset",
-    "verify": "tsx scripts/verify-controls.ts"
+    "reset": "tsx prisma/seed.ts",
+    "setup": "prisma generate && npm run db:reset-file && npm run reset",
+    "verify": "tsx scripts/verify-controls.ts",
+    "db:reset-file": "rm -f prisma/vertex.db prisma/vertex.db-journal prisma/vertex.db-wal prisma/vertex.db-shm && prisma db push --skip-generate --accept-data-loss"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
