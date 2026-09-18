@@ -3,9 +3,7 @@
 # without pkill patterns that also match the calling shell.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-if [ -f /tmp/vertex-dev.pid ] && kill -0 "$(cat /tmp/vertex-dev.pid)" 2>/dev/null; then
-  echo "already running: $(cat /tmp/vertex-dev.pid)"; exit 0
-fi
+./scripts/server-stop.sh 3000 >/dev/null 2>&1 || true
 nohup npm run dev > /tmp/dev.log 2>&1 &
 echo $! > /tmp/vertex-dev.pid
 for _ in $(seq 1 40); do
