@@ -18,7 +18,9 @@
     "db:reset-file": "rm -f prisma/vertex.db prisma/vertex.db-journal prisma/vertex.db-wal prisma/vertex.db-shm && prisma db push --skip-generate --accept-data-loss",
     "test:thread": "node scripts/full-thread.mjs",
     "test:nav": "node scripts/click-every-link.mjs",
-    "check": "npm run typecheck && npm run verify && npm run test:nav && npm run test:thread"
+    "check": "npm run typecheck && npm run verify && npm run test:nav && npm run test:thread && npm run test:offline && npm run test:projector",
+    "test:offline": "node scripts/offline-check.mjs",
+    "test:projector": "node scripts/projector-check.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

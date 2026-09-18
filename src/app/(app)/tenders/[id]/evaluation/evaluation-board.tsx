@@ -74,7 +74,7 @@ export function EvaluationBoard({
               action={b.technicalScore !== null ? (
                 <div className="text-right">
                   <div className="text-[20px] font-bold leading-none text-ink-950 tabular">{b.technicalScore}</div>
-                  <div className="text-[10.5px] uppercase tracking-[0.05em] text-ink-500">score</div>
+                  <div className="text-[11.5px] uppercase tracking-[0.05em] text-ink-500">score</div>
                 </div>
               ) : undefined}
             />

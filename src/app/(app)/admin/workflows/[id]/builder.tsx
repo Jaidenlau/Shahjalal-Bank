@@ -442,7 +442,7 @@ export function Builder({
                       <span aria-hidden="true"
                         className={`absolute left-[10px] top-[22px] h-[calc(100%-16px)] w-px ${s.applies ? "bg-brand-400" : "bg-ink-200"}`} />
                     ) : null}
-                    <span className={`relative z-10 mt-0.5 flex h-[21px] w-[21px] shrink-0 items-center justify-center rounded-full border-2 text-[10.5px] font-bold ${
+                    <span className={`relative z-10 mt-0.5 flex h-[21px] w-[21px] shrink-0 items-center justify-center rounded-full border-2 text-[11.5px] font-bold ${
                       s.applies ? "border-brand-600 bg-brand-600 text-white" : "border-ink-200 bg-ink-100 text-ink-400"
                     }`}>
                       {s.applies ? applying.findIndex(a => a.sequence === s.sequence) + 1 : "–"}

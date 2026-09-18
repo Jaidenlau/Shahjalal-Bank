@@ -118,7 +118,7 @@ export function BudgetRing({
         <div className="text-[21px] font-bold leading-none text-ink-950 tabular">
           {Math.round(consumedPct * 100)}%
         </div>
-        <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">consumed</div>
+        <div className="mt-0.5 text-[11.5px] uppercase tracking-[0.06em] text-ink-500">consumed</div>
       </div>
     </div>
   );

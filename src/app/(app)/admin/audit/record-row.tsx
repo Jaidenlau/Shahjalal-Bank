@@ -141,7 +141,7 @@ export function RecordRow({ record }: { record: AuditRecord }) {
                       </div>
                       <div>
                         <dt className="text-ink-500">Hashed content</dt>
-                        <dd className="max-h-[110px] overflow-y-auto break-all rounded-[4px] bg-white px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-ink-600">
+                        <dd className="max-h-[110px] overflow-y-auto break-all rounded-[4px] bg-white px-2 py-1.5 font-mono text-[11.5px] leading-relaxed text-ink-600">
                           {proof.digestInput}
                         </dd>
                       </div>

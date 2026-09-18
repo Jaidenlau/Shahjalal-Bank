@@ -39,7 +39,7 @@ export function BrandLockup({
   size = "md", className = "",
 }: { size?: "sm" | "md" | "lg"; className?: string }) {
   const s = {
-    sm: { mark: "h-7 w-7", name: "text-[15px]", sub: "text-[10.5px]" },
+    sm: { mark: "h-7 w-7", name: "text-[15px]", sub: "text-[11.5px]" },
     md: { mark: "h-9 w-9", name: "text-[18px]", sub: "text-[11.5px]" },
     lg: { mark: "h-12 w-12", name: "text-[26px]", sub: "text-[13px]" },
   }[size];

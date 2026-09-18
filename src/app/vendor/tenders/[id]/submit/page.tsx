@@ -56,7 +56,7 @@ export default async function SubmitBidPage({ params }: { params: Promise<{ id: 
           <p className="mt-1 text-[14px] text-ink-600">{tender.title}</p>
         </div>
         <div className="shrink-0 rounded-[6px] border border-ink-300 bg-white px-4 py-2 text-center">
-          <div className="text-[10.5px] uppercase tracking-[0.06em] text-ink-500">Closes in</div>
+          <div className="text-[11.5px] uppercase tracking-[0.06em] text-ink-500">Closes in</div>
           <div className="text-[18px] font-bold leading-none text-ink-950">{countdown(tender.closingAt)}</div>
         </div>
       </div>

@@ -59,7 +59,7 @@ export default async function VendorTenderDetail({ params }: { params: Promise<{
         </div>
         {open ? (
           <div className="shrink-0 rounded-[6px] border border-ink-300 bg-white px-4 py-2.5 text-center">
-            <div className="text-[10.5px] uppercase tracking-[0.06em] text-ink-500">Closes in</div>
+            <div className="text-[11.5px] uppercase tracking-[0.06em] text-ink-500">Closes in</div>
             <div className="text-[20px] font-bold leading-none text-ink-950">{countdown(tender.closingAt)}</div>
             <div className="mt-0.5 text-[11px] text-ink-500">{formatDateTime(tender.closingAt)}</div>
           </div>

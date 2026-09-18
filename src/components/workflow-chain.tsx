@@ -76,7 +76,7 @@ export function WorkflowChain({
                   : s.state === "done" ? <Icon name="arrowLeft" className="h-3 w-3" />
                   : s.state === "current" ? <Icon name="clock" className="h-3 w-3" />
                   : s.state === "skipped" ? <Icon name="x" className="h-2.5 w-2.5" />
-                  : <span className="text-[10.5px] font-bold">{s.sequence}</span>}
+                  : <span className="text-[11.5px] font-bold">{s.sequence}</span>}
               </span>
 
               <div className={`min-w-0 flex-1 ${s.state === "skipped" ? "opacity-55" : ""}`}>
@@ -87,7 +87,7 @@ export function WorkflowChain({
                     {s.name}
                   </span>
                   {s.state === "current" ? (
-                    <span className="rounded-[3px] bg-warn-100 px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.05em] text-warn-700">
+                    <span className="rounded-[3px] bg-warn-100 px-1.5 py-0.5 text-[11.5px] font-bold uppercase tracking-[0.05em] text-warn-700">
                       Pending
                     </span>
                   ) : null}

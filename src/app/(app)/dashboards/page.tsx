@@ -91,7 +91,7 @@ export default async function DashboardsPage({
             }`}
           >
             {t.label}
-            <span className="rounded-[3px] bg-ink-100 px-1.5 py-0.5 text-[10.5px] font-bold text-ink-500">
+            <span className="rounded-[3px] bg-ink-100 px-1.5 py-0.5 text-[11.5px] font-bold text-ink-500">
               Module {t.module}
             </span>
           </Link>
@@ -225,7 +225,7 @@ export default async function DashboardsPage({
                       <Td className="max-w-[140px] truncate text-ink-600">{cats.join(", ")}</Td>
                       <Td align="center">
                         {capex.map(c => (
-                          <span key={c} className={`mr-1 rounded-[3px] px-1.5 py-0.5 text-[10.5px] font-bold ${
+                          <span key={c} className={`mr-1 rounded-[3px] px-1.5 py-0.5 text-[11.5px] font-bold ${
                             c === "CAPEX" ? "bg-info-100 text-info-700" : "bg-ink-100 text-ink-600"
                           }`}>{c}</span>
                         ))}

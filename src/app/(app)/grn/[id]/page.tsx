@@ -139,7 +139,7 @@ export default async function GrnDetail({ params }: { params: Promise<{ id: stri
                   <div key={role}>
                     <div className="h-12 border-b border-ink-400" />
                     <div className="mt-1 text-[11.5px] font-medium text-ink-700">{role}</div>
-                    <div className="text-[10.5px] text-ink-500">{who}</div>
+                    <div className="text-[11.5px] text-ink-500">{who}</div>
                   </div>
                 ))}
               </div>

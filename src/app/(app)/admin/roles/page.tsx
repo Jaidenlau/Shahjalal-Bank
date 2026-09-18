@@ -82,11 +82,11 @@ export default async function RolesPage() {
               <div className="flex shrink-0 gap-5 text-right">
                 <div>
                   <div className="text-[15px] font-bold text-ink-900 tabular">{r._count.users}</div>
-                  <div className="text-[10.5px] uppercase tracking-[0.05em] text-ink-500">users</div>
+                  <div className="text-[11.5px] uppercase tracking-[0.05em] text-ink-500">users</div>
                 </div>
                 <div>
                   <div className="text-[15px] font-bold text-ink-900 tabular">{r.permissions.length}</div>
-                  <div className="text-[10.5px] uppercase tracking-[0.05em] text-ink-500">grants</div>
+                  <div className="text-[11.5px] uppercase tracking-[0.05em] text-ink-500">grants</div>
                 </div>
               </div>
             </li>

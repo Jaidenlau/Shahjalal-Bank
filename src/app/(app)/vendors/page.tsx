@@ -58,7 +58,7 @@ export default async function VendorsPage() {
     { header: "Documents", align: "center", cell: v => (
       <span className="text-[12.5px] text-ink-600 tabular">
         {v.documents.filter(d => d.verifiedAt).length}/{v.documents.length}
-        <span className="block text-[10.5px] text-ink-400">verified</span>
+        <span className="block text-[11.5px] text-ink-400">verified</span>
       </span>
     ) },
     { header: "Bids", align: "center", cell: v => <span className="tabular">{v.bids.length}</span> },

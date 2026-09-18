@@ -174,14 +174,14 @@ export default async function PurchaseOrderDetail({ params }: { params: Promise<
                 <div>
                   <div className="h-12 border-b border-ink-400" />
                   <div className="mt-1 text-[11.5px] font-medium text-ink-700">For the Bank</div>
-                  <div className="text-[10.5px] text-ink-500">
+                  <div className="text-[11.5px] text-ink-500">
                     {po.issuedBy?.fullName} · {po.issuedBy?.designation}
                   </div>
                 </div>
                 <div>
                   <div className="h-12 border-b border-ink-400" />
                   <div className="mt-1 text-[11.5px] font-medium text-ink-700">Accepted by the Supplier</div>
-                  <div className="text-[10.5px] text-ink-500">{po.vendor.companyName}</div>
+                  <div className="text-[11.5px] text-ink-500">{po.vendor.companyName}</div>
                 </div>
               </div>
             </div>

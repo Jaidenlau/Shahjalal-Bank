@@ -75,7 +75,7 @@ export function PersonaSwitcher({
                     </span>
                     <span className="shrink-0 text-right">
                       <span className="block text-[11px] font-semibold text-ink-600 tabular">{p.moduleCount}</span>
-                      <span className="block text-[10px] uppercase tracking-wide text-ink-400">modules</span>
+                      <span className="block text-[11.5px] uppercase tracking-wide text-ink-400">modules</span>
                     </span>
                   </button>
                 </li>

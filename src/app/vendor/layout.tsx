@@ -37,7 +37,7 @@ export default async function VendorLayout({ children }: { children: React.React
             <BankMark className="h-9 w-9 text-ink-400" />
             <div className="leading-tight">
               <div className="text-[15px] font-bold">Shahjalal Islami Bank PLC.</div>
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-400">
+              <div className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-ink-400">
                 External Vendor Portal
               </div>
             </div>

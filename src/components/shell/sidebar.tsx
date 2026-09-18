@@ -42,7 +42,7 @@ export function Sidebar({
           <div className="text-[14.5px] font-bold tracking-[-0.01em] text-ink-950">
             Vertex<span className="font-light"> ERP</span>
           </div>
-          <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-ink-400">
+          <div className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-ink-400">
             Shahjalal Islami Bank
           </div>
         </div>
@@ -64,7 +64,7 @@ export function Sidebar({
           if (inGroup.length === 0) return null;
           return (
             <div key={group} className="mb-3">
-              <div className="mb-1 flex items-center gap-1.5 px-2.5 text-[10.5px] font-bold uppercase tracking-[0.09em] text-ink-400">
+              <div className="mb-1 flex items-center gap-1.5 px-2.5 text-[11.5px] font-bold uppercase tracking-[0.09em] text-ink-400">
                 <Icon name={GROUP_ICON[group]} className="h-3 w-3" />
                 {group}
               </div>

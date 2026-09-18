@@ -40,15 +40,15 @@ export function MatchPanel({
               </th>
               <th colSpan={2} className="border-b border-r border-ink-200 bg-info-50 px-3 py-1.5 text-center text-[11.5px] font-bold uppercase tracking-[0.06em] text-info-700">
                 Work order
-                <span className="ml-1.5 font-mono text-[10.5px] font-normal">{poNo}</span>
+                <span className="ml-1.5 font-mono text-[11.5px] font-normal">{poNo}</span>
               </th>
               <th colSpan={2} className="border-b border-r border-ink-200 bg-warn-50 px-3 py-1.5 text-center text-[11.5px] font-bold uppercase tracking-[0.06em] text-warn-700">
                 Goods receipt
-                <span className="ml-1.5 font-mono text-[10.5px] font-normal">{grnNo}</span>
+                <span className="ml-1.5 font-mono text-[11.5px] font-normal">{grnNo}</span>
               </th>
               <th colSpan={2} className="border-b border-ink-200 bg-ink-100 px-3 py-1.5 text-center text-[11.5px] font-bold uppercase tracking-[0.06em] text-ink-700">
                 Invoice
-                <span className="ml-1.5 font-mono text-[10.5px] font-normal">{invoiceNo}</span>
+                <span className="ml-1.5 font-mono text-[11.5px] font-normal">{invoiceNo}</span>
               </th>
             </tr>
             <tr>

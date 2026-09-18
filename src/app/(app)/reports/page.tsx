@@ -68,7 +68,7 @@ export default async function ReportsPage() {
               <li key={label} className="flex items-center gap-3 px-5 py-2.5">
                 <Icon name="chart" className="h-3.5 w-3.5 shrink-0 text-ink-400" />
                 <span className="flex-1 text-[13px] text-ink-800">{label}</span>
-                <span className="shrink-0 rounded-[3px] bg-ink-100 px-1.5 py-0.5 text-[10.5px] font-medium text-ink-500">
+                <span className="shrink-0 rounded-[3px] bg-ink-100 px-1.5 py-0.5 text-[11.5px] font-medium text-ink-500">
                   {ENTITIES.find(e => e.key === entity)?.label}
                 </span>
               </li>
