@@ -57,6 +57,14 @@ export async function seedVendors(db: PrismaClient) {
   for (const [i, v] of VENDORS.entries()) {
     const contact = personName(i % 5 === 0 ? "F" : "M");
     const slug = v.companyName.toLowerCase().replace(/[^a-z]+/g, "").slice(0, 14);
+    // Registration must predate enlistment approval. Leaving createdAt to
+    // default to now() produced vendors "registered today, approved two years
+    // ago" in the audit trail, which is exactly the kind of detail a careful
+    // reviewer notices while clicking around.
+    const enlistedAt = v.status === "APPROVED" ? daysAgo(int(120, 900)) : null;
+    const registeredAt = enlistedAt
+      ? new Date(enlistedAt.getTime() - int(14, 60) * 86_400_000)
+      : daysAgo(int(20, 90));
     const created = await db.vendor.create({
       data: {
         companyName: v.companyName,
@@ -69,7 +77,8 @@ export async function seedVendors(db: PrismaClient) {
         contactEmail: `info@${slug}.com.bd`,
         address: `${int(12, 340)}, ${v.area}, ${v.area.includes("Chattogram") ? "Chattogram" : v.area.includes("Sylhet") ? "Sylhet" : "Dhaka"}, Bangladesh`,
         enlistmentStatus: v.status,
-        enlistedAt: v.status === "APPROVED" ? daysAgo(int(120, 900)) : null,
+        createdAt: registeredAt,
+        enlistedAt,
         incomeTaxSubmittedAt: v.status === "APPROVED" ? daysAgo(int(30, 300)) : null,
         categories: { create: v.categories.map(c => ({ category: c })) },
       },
@@ -86,9 +95,12 @@ export async function seedVendors(db: PrismaClient) {
           docType: d,
           fileName: `${slug}-${d.toLowerCase().replace(/[^a-z]+/g, "-")}.pdf`,
           fileSize: int(140, 3800) * 1024,
-          uploadedAt: daysAgo(int(60, 800)),
-          verifiedBy: v.status === "APPROVED" ? "Shahidul Islam" : null,
-          verifiedAt: v.status === "APPROVED" ? daysAgo(int(30, 700)) : null,
+          // Documents are uploaded between registration and enlistment, and
+          // verified at enlistment. Ordering these correctly keeps the vendor
+          // timeline coherent when someone opens the record.
+          uploadedAt: new Date(registeredAt.getTime() + int(1, 10) * 86_400_000),
+          verifiedBy: enlistedAt ? "Shahidul Islam" : null,
+          verifiedAt: enlistedAt,
         },
       });
     }

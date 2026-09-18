@@ -318,6 +318,62 @@ async function main() {
   else bad("seeded mismatch invoice", "none found");
 
   // -------------------------------------------------------------------------
+  console.log("\n  7. Seed coherence");
+  // -------------------------------------------------------------------------
+  // Nobody tests a demo's seed data, and it is exactly what a curious reviewer
+  // clicks into. These assert the timelines hold together.
+
+  const vendors = await db.vendor.findMany({
+    where: { enlistedAt: { not: null } },
+    select: { companyName: true, createdAt: true, enlistedAt: true },
+  });
+  const outOfOrder = vendors.filter(v => v.enlistedAt! < v.createdAt);
+  if (outOfOrder.length === 0) ok("every vendor was registered before it was enlisted", `${vendors.length} vendors`);
+  else bad("vendor registration precedes enlistment", outOfOrder.map(v => v.companyName).join(", "));
+
+  const docs = await db.vendorDocument.findMany({ select: { fileName: true, uploadedAt: true, verifiedAt: true } });
+  const badDocs = docs.filter(d => d.verifiedAt && d.verifiedAt < d.uploadedAt);
+  if (badDocs.length === 0) ok("every document was uploaded before it was verified", `${docs.length} documents`);
+  else bad("document upload precedes verification", `${badDocs.length} out of order`);
+
+  const tenders = await db.tender.findMany({
+    select: { tenderNo: true, createdAt: true, publishedAt: true, closedAt: true, awardedAt: true },
+  });
+  const badTenders = tenders.filter(t =>
+    (t.publishedAt && t.publishedAt < t.createdAt) ||
+    (t.closedAt && t.publishedAt && t.closedAt < t.publishedAt) ||
+    (t.awardedAt && t.closedAt && t.awardedAt < t.closedAt));
+  if (badTenders.length === 0) ok("tender timelines run in order", `${tenders.length} tenders: created, published, closed, awarded`);
+  else bad("tender timelines", badTenders.map(t => t.tenderNo).join(", "));
+
+  const grns = await db.goodsReceiptNote.findMany({ include: { po: { select: { poNo: true, issuedAt: true } } } });
+  const badGrns = grns.filter(g => g.po.issuedAt && g.receivedAt < g.po.issuedAt);
+  if (badGrns.length === 0) ok("no goods were received before the work order was issued", `${grns.length} receipts`);
+  else bad("goods receipt after work order", badGrns.map(g => g.grnNo).join(", "));
+
+  const futureInvoices = await db.invoice.count({ where: { receivedAt: { gt: new Date() } } });
+  if (futureInvoices === 0) ok("no record is dated in the future");
+  else bad("future-dated records", `${futureInvoices} invoices`);
+
+  // The demo thread's numbers, which the run of show depends on.
+  const demoReq = await db.requisition.findFirst({
+    where: { requisitionNo: "REQ/CSD/2026/0846" },
+    include: { lines: true },
+  });
+  const line = demoReq?.lines[0];
+  if (line && line.quantity === 15 && line.quantityFromStore === 3 && line.quantityToPurchase === 12) {
+    ok("the demo requisition splits 3 from store and 12 to purchase", "15 laptops against stock of 3");
+  } else {
+    bad("demo requisition split", `got quantity=${line?.quantity} store=${line?.quantityFromStore} purchase=${line?.quantityToPurchase}`);
+  }
+
+  const laptopStock = await db.stockBalance.findFirst({
+    where: { item: { code: "IT-LAP-0041" } }, select: { quantityOnHand: true },
+  });
+  if (laptopStock?.quantityOnHand === 3) ok("laptop stock is exactly 3, as the thread requires");
+  else bad("laptop stock", `expected 3, got ${laptopStock?.quantityOnHand}`);
+
+  // -------------------------------------------------------------------------
   console.log(`\n  ${pass} passed, ${fail} failed\n`);
   if (fail > 0) process.exit(1);
 }
