@@ -149,6 +149,27 @@ async function main() {
   if (stillSealed.technicalEvaluationCompletedAt) bad("verification left demo state clean", "tender is now unlocked");
   else ok("verification left demo state clean", "tender is still sealed for the demo");
 
+  // The audit trail must not become a way around the seal. Bank staff can read
+  // audit rows, so a row recording a sealed bid's amount would defeat the
+  // control entirely.
+  const sealedTenderBids = await db.bid.findMany({
+    where: { tenderId: tender.id }, select: { id: true },
+  });
+  const auditRows = await db.auditLog.findMany({
+    where: { entityId: { in: [...sealedTenderBids.map(b => b.id), tender.id] } },
+    select: { id: true, action: true, previousValue: true, newValue: true },
+  });
+  const sealedAmounts = ["1386000", "1404000", "1320000", "138600000", "140400000", "132000000"];
+  const leaky = auditRows.filter(r =>
+    sealedAmounts.some(a => (r.previousValue ?? "").includes(a) || (r.newValue ?? "").includes(a)));
+  if (leaky.length > 0) {
+    bad("audit trail does not leak a sealed amount",
+        `${leaky.length} row(s) carry a sealed bid amount: ${leaky.map(r => `#${r.id} ${r.action}`).join(", ")}`);
+  } else {
+    ok("audit trail does not leak a sealed amount",
+       `${auditRows.length} rows for this tender checked; none records a sealed bid value`);
+  }
+
   // -------------------------------------------------------------------------
   console.log("\n  3. Work order / requisition quantity match");
   // -------------------------------------------------------------------------
