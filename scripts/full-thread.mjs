@@ -27,10 +27,24 @@ const login = async (email) => {
   await p.fill('input[name="email"]', email);
   await p.fill('input[name="password"]', "Demo@2026");
   await p.click('button[type="submit"]');
-  await p.waitForURL(u => !u.pathname.endsWith("/login"), { timeout: 30000 });
+  await p.waitForURL(u => !u.pathname.endsWith("/login"), { timeout: 90000 });
 };
 const text = async () => (await p.locator("main").innerText()).replace(/\s+/g, " ");
 const alert = async () => (await p.locator('[role="alert"]').first().innerText().catch(() => "")).replace(/\s+/g, " ");
+/**
+ * Wait for a control refusal to appear AND have rendered text.
+ *
+ * Waiting on the element alone is not enough: Playwright can match it the
+ * instant React attaches it, before the children are laid out, and innerText
+ * then reads empty.
+ */
+const waitAlert = async (ms = 25000) => {
+  await p.waitForFunction(() => {
+    const el = document.querySelector('[role="alert"]');
+    return Boolean(el && (el.textContent || "").trim().length > 20);
+  }, null, { timeout: ms }).catch(() => {});
+  return alert();
+};
 const clickIn = async (heading, label) => {
   const r = await p.evaluate(([h, a]) => {
     const el = Array.from(document.querySelectorAll("h2,h3")).find(x => x.textContent?.includes(h));
@@ -74,8 +88,7 @@ else no("requisition creation", (await text()).slice(0, 200));
 
 // ---- 2. Maker-checker refusal -------------------------------------------
 await p.locator('button:has-text("Attempt approval")').click();
-await p.waitForTimeout(2500);
-const mc = await alert();
+const mc = await waitAlert();
 if (/Maker-Checker/i.test(mc)) ok("maker-checker refuses self-approval", mc.slice(0, 120) + "…");
 else no("maker-checker refusal", mc.slice(0, 200));
 
@@ -116,8 +129,7 @@ if (leaked.length === 0) ok("no bid amount is readable while sealed", "3 envelop
 else no("amounts leaked while sealed", leaked.join(", "));
 
 await p.locator('button:has-text("Open financial envelope")').first().click();
-await p.waitForTimeout(2500);
-const sealMsg = await alert();
+const sealMsg = await waitAlert();
 if (/Two-Envelope Seal/i.test(sealMsg)) ok("opening a sealed envelope is refused", sealMsg.slice(0, 120) + "…");
 else no("seal refusal", sealMsg.slice(0, 200));
 
@@ -164,8 +176,7 @@ else no("comparative statement recommendation", cs.slice(0, 200));
 const attempt = p.locator('button:has-text("Attempt award")');
 if (await attempt.count()) {
   await attempt.first().click();
-  await p.waitForTimeout(2800);
-  const awardMsg = await alert();
+  const awardMsg = await waitAlert();
   if (/technically disqualified/i.test(awardMsg)) ok("awarding a disqualified bidder is refused", awardMsg.slice(0, 130));
   else no("disqualified award refusal", awardMsg.slice(0, 250) || "(no refusal shown)");
 } else no("disqualified award refusal", "no attempt-award control found");
@@ -187,12 +198,21 @@ await login("shahidul.islam@sjiblbd.com");
 await p.goto(B + `/purchase-orders/new?tender=${tid}`, { waitUntil: "networkidle" });
 const qtyInput = p.locator('input[type="number"]').first();
 await qtyInput.fill("15");
-await p.waitForTimeout(400);
+// The form previews the mismatch before the server refuses it; wait for that
+// so the click lands on settled state.
+await p.waitForFunction(() => /exceed the approved quantity/i.test(document.body.innerText), null, { timeout: 15000 }).catch(() => {});
 await p.locator('button:has-text("Issue work order")').click();
-await p.waitForTimeout(2600);
-const poMsg = await alert();
+const poMsg = await waitAlert();
 if (/Approved quantity: 12\. Attempted quantity: 15/.test(poMsg)) ok("work order for 15 is refused against an approval for 12", poMsg.slice(0, 150));
-else no("PO mismatch refusal", poMsg.slice(0, 250));
+else {
+  const diag = {
+    url: p.url(),
+    qty: await qtyInput.inputValue().catch(() => "?"),
+    alerts: await p.locator('[role="alert"]').count(),
+    body: (await text()).slice(0, 300),
+  };
+  no("PO mismatch refusal", `alert="${poMsg.slice(0, 160)}" qty=${diag.qty} alerts=${diag.alerts} url=${diag.url}\n        ${diag.body}`);
+}
 
 await qtyInput.fill("12");
 await p.waitForTimeout(400);
@@ -272,7 +292,8 @@ if (await payBtn.count()) {
 await login("mizanur.rahman@sjiblbd.com");
 await p.goto(B + "/admin/audit", { waitUntil: "networkidle" });
 await p.locator('button:has-text("Verify all")').click();
-await p.waitForTimeout(3000);
+await p.waitForFunction(() => /Chain intact|Chain broken/.test(document.body.innerText), null, { timeout: 30000 }).catch(() => {});
+await p.waitForTimeout(250);
 const auditText = await text();
 if (/Chain intact/.test(auditText)) {
   const n = auditText.match(/All ([\d,]+) records verified/)?.[1] ?? "?";

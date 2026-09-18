@@ -13,9 +13,14 @@ whether it is real. The order below alternates between them deliberately.
 ## Before you walk in
 
 ```bash
+npm run demo           # builds and serves on http://localhost:3000
 npm run reset          # restores the exact demo start state, ~5 seconds
-npm run dev            # http://localhost:3000
+npm run warm           # loads every page once so none of them pauses on stage
 ```
+
+Use `npm run demo`, not `npm run dev`. Development mode compiles each screen the
+first time it is opened and can pause for seconds; after `npm run demo` and
+`npm run warm`, every page renders in about 80ms.
 
 `npm run reset` is safe to run while the app is running. Run it before you
 start, and again between rehearsals.

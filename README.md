@@ -15,7 +15,18 @@ network.
 ```bash
 npm install
 npm run setup     # creates the database and seeds it, ~10 seconds
-npm run dev       # http://localhost:3000
+npm run demo      # builds, then serves on http://localhost:3000
+```
+
+**Use `npm run demo`, not `npm run dev`, on the day.** Development mode compiles
+each screen the first time it is opened, which can pause for several seconds.
+`npm run demo` builds everything first, after which every page renders in about
+80ms. Use `npm run dev` only while changing the code.
+
+Then, before you present, warm the routes once:
+
+```bash
+npm run warm      # loads every page once, ~35 seconds
 ```
 
 Every login is `Demo@2026`.

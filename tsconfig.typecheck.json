@@ -1,0 +1,6 @@
+{
+  "//": "Typechecks the application's own source, deterministically. The base tsconfig includes .next/types, which Next generates during a build and which therefore may or may not exist when a check runs. Route types are validated by `next build`.",
+  "extends": "./tsconfig.json",
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", "prisma/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules", ".next"]
+}

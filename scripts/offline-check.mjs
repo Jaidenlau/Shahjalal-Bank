@@ -40,7 +40,7 @@ await p.goto(B + "/login", { waitUntil: "networkidle" });
 await p.fill('input[name="email"]', "mizanur.rahman@sjiblbd.com");
 await p.fill('input[name="password"]', "Demo@2026");
 await p.click('button[type="submit"]');
-await p.waitForURL(u => !u.pathname.endsWith("/login"), { timeout: 30000 });
+await p.waitForURL(u => !u.pathname.endsWith("/login"), { timeout: 90000 });
 
 console.log("\n  Offline check — every non-localhost request blocked\n");
 let bad = 0;

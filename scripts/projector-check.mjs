@@ -32,7 +32,7 @@ for (const c of CHECKS) {
     await p.fill('input[name="email"]', c.as);
     await p.fill('input[name="password"]', "Demo@2026");
     await p.click('button[type="submit"]');
-    await p.waitForURL(u => !u.pathname.endsWith("/login"), { timeout: 30000 });
+    await p.waitForURL(u => !u.pathname.endsWith("/login"), { timeout: 90000 });
   }
   await p.goto(B + c.path, { waitUntil: "networkidle" });
   await p.waitForTimeout(300);

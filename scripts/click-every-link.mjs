@@ -28,7 +28,7 @@ for (const [email, role] of PERSONAS) {
   await p.fill('input[name="email"]', email);
   await p.fill('input[name="password"]', "Demo@2026");
   await p.click('button[type="submit"]');
-  await p.waitForURL(u => !u.pathname.endsWith("/login"), { timeout: 30000 });
+  await p.waitForURL(u => !u.pathname.endsWith("/login"), { timeout: 90000 });
 
   // Every link the sidebar offers this persona.
   const hrefs = await p.$$eval('nav a[href^="/"]', els =>

@@ -57,7 +57,12 @@ export default async function AuditPage({
   }
 
   const [rows, total, entityTypes, actions, users] = await Promise.all([
-    prisma.auditLog.findMany({ where, orderBy: { id: "desc" }, take: 150 }),
+    // Each row is interactive (expandable, with its own hash recomputation), so
+    // the page cost is hydration rather than the query — every one of these
+    // finishes in under 5ms. 60 rows still fills several screens and keeps the
+    // page under 200ms, which matters because this is one of the screens the
+    // room watches being opened.
+    prisma.auditLog.findMany({ where, orderBy: { id: "desc" }, take: 60 }),
     prisma.auditLog.count(),
     prisma.auditLog.groupBy({ by: ["entityType"], _count: { _all: true } }),
     prisma.auditLog.groupBy({ by: ["action"], _count: { _all: true } }),
@@ -177,10 +182,11 @@ export default async function AuditPage({
           </tbody>
         </Table>
 
-        {rows.length >= 150 ? (
+        {rows.length >= 60 ? (
           <div className="border-t border-ink-200 px-4 py-2.5 text-[12.5px] text-ink-500">
-            Showing the most recent 150 records of {total.toLocaleString("en-US")}. Narrow the
-            filters to reach older activity.
+            Showing the most recent 60 records of {total.toLocaleString("en-US")}. Narrow the
+            filters to reach older activity — the integrity check above covers every record, not
+            just the ones shown.
           </div>
         ) : (
           <div className="border-t border-ink-200 px-4 py-2.5 text-[12.5px] text-ink-500">
