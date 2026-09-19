@@ -25,6 +25,12 @@ export interface ModuleDef {
   /** Permission module key. */
   perm: string;
   blurb: string;
+  /**
+   * Set where we have built something the Bank did not ask for in Annexure-B.
+   * The coverage screen shows these separately so nobody can mistake an
+   * addition of ours for a line item the Bank specified.
+   */
+  beyondScope?: true;
 }
 
 export type ModuleGroup =
@@ -54,6 +60,9 @@ export const MODULES: ModuleDef[] = [
     blurb: "Vendor enlistment, document verification, trade licence expiry tracking and category tagging." },
   { no: 5, code: "AUCTION", name: "e-Auction", href: "/auctions", group: "Procurement", tier: "list", perm: "AUCTION",
     blurb: "Auction lots for retired assets with anonymous bidding and timed closing." },
+  { no: 3, code: "SHARIAH", name: "Shariah Governance", href: "/shariah", group: "Procurement", tier: "full", perm: "SHARIAH",
+    beyondScope: true,
+    blurb: "Screening of vendors, contracts and work orders against the rules the Bank's Shariah Supervisory Committee maintains, with the Committee's decisions recorded against each document." },
 
   // ---- Inventory & Assets ------------------------------------------------
   { no: 21, code: "GRN", name: "Goods Receipt", href: "/grn", group: "Inventory & Assets", tier: "full", perm: "GRN",

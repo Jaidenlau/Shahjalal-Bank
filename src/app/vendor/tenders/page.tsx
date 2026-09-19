@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Countdown } from "@/components/countdown";
 import { requireVendorUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatDate, countdown } from "@/lib/date";
@@ -55,7 +56,7 @@ export default async function VendorTenders() {
                       : <span className="text-[12px] text-ink-500">Single</span>}
                   </Td>
                   <Td className="whitespace-nowrap text-ink-600">{formatDate(t.publishedAt)}</Td>
-                  <Td className="whitespace-nowrap font-semibold text-ink-800">{countdown(t.closingAt)}</Td>
+                  <Td className="whitespace-nowrap font-semibold text-ink-800"><Countdown to={t.closingAt} initial={countdown(t.closingAt)} /></Td>
                   <Td align="right">
                     <Link href={`/vendor/tenders/${t.id}`}
                       className="inline-flex items-center gap-1 rounded-[5px] bg-ink-900 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-ink-800">

@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { Countdown } from "@/components/countdown";
 import Link from "next/link";
 import { requireVendorUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -57,7 +58,7 @@ export default async function SubmitBidPage({ params }: { params: Promise<{ id: 
         </div>
         <div className="shrink-0 rounded-[6px] border border-ink-300 bg-white px-4 py-2 text-center">
           <div className="text-[11.5px] uppercase tracking-[0.06em] text-ink-500">Closes in</div>
-          <div className="text-[18px] font-bold leading-none text-ink-950">{countdown(tender.closingAt)}</div>
+          <div className="text-[18px] font-bold leading-none text-ink-950"><Countdown to={tender.closingAt} initial={countdown(tender.closingAt)} /></div>
         </div>
       </div>
 

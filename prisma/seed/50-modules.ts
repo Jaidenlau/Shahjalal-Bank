@@ -134,6 +134,8 @@ export async function seedModules(
     ["Annual Maintenance Contract — UPS and Power Systems", "AMC", 860000_00, 75],
     ["Pest Control Services, All Premises", "SERVICE", 620000_00, 285],
     ["Rate Contract — Drinking Water Supply", "SUPPLY", 480000_00, 165],
+    ["Interior Fit-Out and Civil Works — Dhanmondi Branch", "SERVICE", 9400000_00, 140],
+    ["Staff Canteen Catering Services, Head Office", "SERVICE", 2760000_00, 88],
   ];
 
   for (const [i, [title, type, value, daysToExpiry]] of contractSpecs.entries()) {

@@ -7,6 +7,7 @@ import { seedWorkflows } from "./seed/30-workflows";
 import { seedProcurement } from "./seed/40-procurement";
 import { seedPurchase } from "./seed/45-purchase";
 import { seedModules } from "./seed/50-modules";
+import { seedShariah } from "./seed/55-shariah";
 import { seedAudit } from "./seed/60-audit";
 import { seedSystem } from "./seed/70-system";
 
@@ -57,6 +58,8 @@ async function clear() {
     "auctionBid", "auctionLot",
     "insuranceClaim", "insurancePolicy",
     "assetMaintenance", "asset",
+    // Shariah records reference rules, contracts, vendors and users.
+    "shariahFlag", "shariahReview", "shariahRule",
     "contractMilestone", "contract",
     "fuelLog", "vehicleTrip", "vehicle",
     "visitorAppointment", "visitor",
@@ -142,6 +145,10 @@ async function main() {
   });
   done();
 
+  step("shariah governance");
+  const shariah = await seedShariah(db, core.users);
+  done(`${shariah.rules} committee rules, ${shariah.flags} flags raised`);
+
   step("integrations and notifications");
   await seedSystem(db, core.users);
   done();
@@ -166,6 +173,9 @@ async function main() {
     vehicles: await db.vehicle.count(),
     visitors: await db.visitor.count(),
     auditLog: await db.auditLog.count(),
+    shariahRules: await db.shariahRule.count(),
+    shariahReviews: await db.shariahReview.count(),
+    shariahFlags: await db.shariahFlag.count(),
   };
 
   console.log("\n  Seeded:");
@@ -177,6 +187,7 @@ async function main() {
   console.log(`    Tender          ${procurement.demoTender.tenderNo} — closed, 3 bids, financial envelopes SEALED`);
   console.log(`    Fallback req    ${procurement.fallbackReq.requisitionNo} — awaiting Farhana Akter`);
   console.log(`    Source req      ${procurement.sourceReq.requisitionNo} — approved, converted to tender`);
+  console.log(`\n  Shariah Supervisory Committee: ${shariah.committee.join(", ")}`);
   console.log(`\n  All logins use password: ${DEMO_PASSWORD}`);
   console.log(`\n  Done in ${((Date.now() - started) / 1000).toFixed(1)}s\n`);
 }

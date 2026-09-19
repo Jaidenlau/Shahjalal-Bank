@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Countdown } from "@/components/countdown";
 import { requireVendorUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { num } from "@/lib/money";
@@ -85,7 +86,7 @@ export default async function VendorDashboard() {
                           : <span className="text-[12px] text-ink-500">Single</span>}
                       </Td>
                       <Td>
-                        <span className="font-semibold text-ink-800">{countdown(t.closingAt)}</span>
+                        <Countdown to={t.closingAt} initial={countdown(t.closingAt)} className="font-semibold text-ink-800" />
                         <span className="block text-[11.5px] text-ink-500">{formatDate(t.closingAt)}</span>
                       </Td>
                       <Td align="right">

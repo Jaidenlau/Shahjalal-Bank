@@ -17,6 +17,7 @@ const CHECKS = [
   { path: "/admin/audit", as: "mizanur.rahman@sjiblbd.com", anchor: "Verify all", note: "the verify button must be above the fold" },
   { path: "/admin/workflows", as: "mizanur.rahman@sjiblbd.com", anchor: "Workflow builder", note: "builder list" },
   { path: "/about", as: "mizanur.rahman@sjiblbd.com", anchor: "Module coverage", note: "coverage map" },
+  { path: "/shariah", as: "sirajul.haque@sjiblbd.com", anchor: "Shariah governance", note: "the Committee screen" },
   { path: "/vendor/login", as: null, anchor: "Bidder sign in", note: "vendor portal entry" },
 ];
 

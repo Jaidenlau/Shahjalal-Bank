@@ -164,6 +164,37 @@ export default async function AboutPage() {
         </Table>
       </Card>
 
+      <Card pad={false} className="mb-5 border-gold-500/50">
+        <CardHeader
+          title="Beyond Annexure-B — built because the Bank is an Islami bank"
+          subtitle="Not requested in the RFQ. Listed separately so nothing we added is mistaken for something the Bank specified."
+        />
+        <div className="px-5 py-4">
+          <Note tone="sealed" title="Shariah governance">
+            Annexure-A and Annexure-B do not mention Shariah at any point; the specification was
+            written by the IT Division as a general procurement specification. Procurement at
+            Shahjalal Islami Bank PLC is nonetheless subject to the Bank&rsquo;s Shariah
+            Supervisory Committee.
+            <br /><br />
+            We have built the mechanism and none of the judgement: a Committee approval tier, a
+            screening engine driven by rules the Committee itself maintains, contract-structure
+            assessment, halal certification tracking on canteen supply, and a decision record
+            against each vendor, contract and work order. <strong>The system makes no Shariah
+            ruling of its own.</strong> Every rule carries the Committee minute that created it,
+            and no other role &mdash; including the system administrator &mdash; can record a
+            decision on the Committee&rsquo;s behalf.
+            <br /><br />
+            The rule set shipped in this demonstration is illustrative. The Committee&rsquo;s own
+            would replace it during implementation.
+          </Note>
+          <div className="mt-3">
+            <Link href="/shariah" className="text-[13.5px] font-semibold text-brand-700 hover:underline">
+              Open Shariah governance &rarr;
+            </Link>
+          </div>
+        </div>
+      </Card>
+
       <Card pad={false} className="mb-5">
         <CardHeader
           title="Flagged in our proposal as needing customisation"
@@ -197,6 +228,7 @@ export default async function AboutPage() {
               ["Quantity matching", "Raise a work order for more than the requisition approved.", "/purchase-orders"],
               ["Configurable routing", "Change an approval threshold and watch the route redraw before you save.", "/admin/workflows"],
               ["Tamper-evident audit", "Verify the whole chain, then expand any record to see the bytes that were hashed.", "/admin/audit"],
+              ["Shariah authority", "Sign in as the system administrator and try to record a Shariah decision. The system refuses.", "/shariah"],
             ].map(([title, how, href]) => (
               <li key={title} className="flex items-start gap-2.5">
                 <Icon name="shield" className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />

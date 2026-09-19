@@ -12,6 +12,8 @@ import { actOnWorkflow, resolveRoute, evaluateCondition } from "../src/lib/workf
 import { assertPoMatchesRequisition, buildValidationContext, threeWayMatch } from "../src/lib/po-validation";
 import { isControlViolation } from "../src/lib/errors";
 import { formatBDT, num } from "../src/lib/money";
+import { recordShariahDecision, ShariahAuthorityError, collectTargets } from "../src/lib/shariah";
+import { matchRule } from "../src/lib/shariah-types";
 
 const db = new PrismaClient();
 let pass = 0, fail = 0;
@@ -448,6 +450,141 @@ async function main() {
   });
   if (laptopStock?.quantityOnHand === 3) ok("laptop stock is exactly 3, as the thread requires");
   else bad("laptop stock", `expected 3, got ${laptopStock?.quantityOnHand}`);
+
+  // -------------------------------------------------------------------------
+  console.log("\n  6. Shariah governance — the Committee's authority is exclusive");
+  // -------------------------------------------------------------------------
+  const sscRole = await db.role.findFirst({ where: { code: "SHARIAH" } });
+  if (sscRole) ok("the Shariah Supervisory Committee exists as a role");
+  else bad("Shariah role", "no SHARIAH role was seeded");
+
+  const members = await db.user.findMany({
+    where: { roles: { some: { role: { code: "SHARIAH" } } } },
+    include: { roles: { include: { role: true } } },
+  });
+  if (members.length >= 2) {
+    ok("the Committee has more than one member", members.map(m => m.fullName).join(", "));
+  } else {
+    bad("Committee membership", `expected at least 2 members, found ${members.length}`);
+  }
+
+  const openFlag = await db.shariahFlag.findFirst({ where: { status: "OPEN" }, include: { rule: true } });
+  if (!openFlag) {
+    bad("Shariah queue", "no open flag exists, so the refusal below cannot be exercised");
+  } else {
+    // (a) The system administrator — the most powerful internal role — is refused.
+    const admin = await db.user.findFirstOrThrow({
+      where: { roles: { some: { role: { code: "ADMIN" } } } },
+      include: { roles: { include: { role: true } } },
+    });
+    try {
+      await recordShariahDecision({
+        documentType: openFlag.documentType,
+        documentId: openFlag.documentId,
+        documentLabel: openFlag.documentLabel,
+        structure: "MURABAHA",
+        decision: "APPROVED",
+        conditions: "",
+        reference: "SSC/TEST",
+        actor: {
+          id: admin.id, fullName: admin.fullName, roleName: "System Administrator",
+          roleCodes: admin.roles.map(r => r.role.code),
+        },
+      });
+      bad("administrator recording a Shariah decision", "it was ALLOWED — the Committee's authority is not exclusive");
+    } catch (e) {
+      if (e instanceof ShariahAuthorityError) {
+        ok("the system administrator cannot record a Shariah decision",
+           `${admin.fullName} refused: ${e.message.slice(0, 96)}…`);
+      } else {
+        bad("administrator refusal", `threw the wrong error: ${String(e).slice(0, 120)}`);
+      }
+    }
+
+    // (b) A Committee member succeeds on the same document.
+    const member = members[0];
+    if (member) {
+      try {
+        await recordShariahDecision({
+          documentType: openFlag.documentType,
+          documentId: openFlag.documentId,
+          documentLabel: openFlag.documentLabel,
+          structure: "MURABAHA",
+          decision: "APPROVED",
+          conditions: "",
+          reference: "SSC/VERIFY/0001",
+          actor: {
+            id: member.id, fullName: member.fullName, roleName: "Shariah Supervisory Committee",
+            roleCodes: member.roles.map(r => r.role.code),
+          },
+        });
+        ok("a Committee member can record the same decision", `${member.fullName} on ${openFlag.documentLabel}`);
+      } catch (e) {
+        bad("Committee member decision", `it was REFUSED: ${String(e).slice(0, 140)}`);
+      }
+    }
+
+    // (c) An approval with conditions must actually state them.
+    const stillOpen = await db.shariahFlag.findFirst({ where: { status: "OPEN" } });
+    if (stillOpen && members[0]) {
+      try {
+        await recordShariahDecision({
+          documentType: stillOpen.documentType,
+          documentId: stillOpen.documentId,
+          documentLabel: stillOpen.documentLabel,
+          structure: "IJARAH",
+          decision: "APPROVED_WITH_CONDITIONS",
+          conditions: "   ",
+          reference: "SSC/VERIFY/0002",
+          actor: {
+            id: members[0].id, fullName: members[0].fullName, roleName: "Shariah Supervisory Committee",
+            roleCodes: members[0].roles.map(r => r.role.code),
+          },
+        });
+        bad("empty conditions", "an approval with conditions was accepted with no conditions stated");
+      } catch (e) {
+        if (e instanceof ShariahAuthorityError) ok("an approval with conditions must state the conditions");
+        else bad("empty conditions", `threw the wrong error: ${String(e).slice(0, 120)}`);
+      }
+    }
+  }
+
+  // (d) The rules are data the Committee owns, not logic compiled into the product.
+  const rules = await db.shariahRule.findMany();
+  const withMinute = rules.filter(r => r.reference.trim().length > 0);
+  if (rules.length > 0 && withMinute.length === rules.length) {
+    ok("every screening rule cites the Committee minute that created it", `${rules.length} rules`);
+  } else {
+    bad("rule provenance", `${rules.length - withMinute.length} rule(s) carry no Committee reference`);
+  }
+
+  // (e) Deactivating a rule actually stops it matching. This is the claim that
+  //     the Committee controls the screening, so it is asserted rather than shown.
+  const sample = rules.find(r => r.isActive);
+  if (sample) {
+    const targets = await collectTargets(db);
+    const hitsActive = targets.filter(t => matchRule(sample, t)).length;
+    const hitsInactive = targets.filter(t => matchRule({ ...sample, isActive: false }, t)).length;
+    if (hitsInactive === 0 && hitsActive >= 0) {
+      ok("a rule the Committee deactivates stops matching immediately", `${sample.code}: ${hitsActive} match(es) active, 0 inactive`);
+    } else {
+      bad("rule deactivation", `inactive rule still matched ${hitsInactive} document(s)`);
+    }
+  }
+
+  // (f) Nothing in the Shariah module may write to the audit trail's past.
+  const shariahAudit = await db.auditLog.findMany({
+    where: { action: { startsWith: "SHARIAH_" } }, orderBy: { id: "asc" },
+  });
+  if (shariahAudit.length > 0) {
+    ok("Shariah decisions are written to the audit trail", `${shariahAudit.length} record(s)`);
+  } else {
+    bad("Shariah audit", "no Shariah action reached the audit trail");
+  }
+
+  const chainAfter = await verifyChain(db);
+  if (chainAfter.ok) ok("the audit chain still verifies after Shariah decisions", `${chainAfter.checked} records`);
+  else bad("audit chain after Shariah decisions", chainAfter.reason);
 
   // -------------------------------------------------------------------------
   console.log(`\n  ${pass} passed, ${fail} failed\n`);

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Countdown } from "@/components/countdown";
 import Link from "next/link";
 import { requireUser, can } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -135,7 +136,7 @@ export default async function TenderDetail({
             <MetaItem label="Published">{tender.publishedAt ? formatDate(tender.publishedAt) : "Not published"}</MetaItem>
             <MetaItem label="Closing">
               {tender.status === "PUBLISHED" && tender.closingAt
-                ? countdown(tender.closingAt)
+                ? <Countdown to={tender.closingAt} initial={countdown(tender.closingAt)} />
                 : tender.closingAt ? formatDate(tender.closingAt) : "—"}
             </MetaItem>
             <MetaItem label="Bids">{tender.bids.length}</MetaItem>

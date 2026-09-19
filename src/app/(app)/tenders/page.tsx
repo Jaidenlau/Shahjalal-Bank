@@ -1,4 +1,5 @@
 import { requireUser, can } from "@/lib/auth";
+import { Countdown } from "@/components/countdown";
 import { prisma } from "@/lib/db";
 import { num } from "@/lib/money";
 import { formatDate, countdown, relativeDays } from "@/lib/date";
@@ -107,7 +108,7 @@ export default async function TendersPage({
                   </Td>
                   <Td className="whitespace-nowrap">
                     {t.status === "PUBLISHED" && t.closingAt ? (
-                      <span className="font-semibold text-brand-700">{countdown(t.closingAt)}</span>
+                      <Countdown to={t.closingAt} initial={countdown(t.closingAt)} className="font-semibold text-brand-700" />
                     ) : t.closingAt ? (
                       <span className="text-ink-500">{formatDate(t.closingAt)}</span>
                     ) : "—"}

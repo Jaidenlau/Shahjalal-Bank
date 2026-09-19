@@ -57,6 +57,7 @@ model User {
   technicalPartsOpened BidTechnicalPart[]   @relation("TechnicalOpenedBy")
   financialPartsOpened BidFinancialPart[]   @relation("FinancialOpenedBy")
   savedReports         SavedReport[]
+  shariahDecisions     ShariahReview[]      @relation("ShariahDecidedBy")
 
   @@index([departmentId])
   @@index([branchId])
@@ -159,6 +160,12 @@ model Vendor {
   enlistedAt           DateTime?
   incomeTaxSubmittedAt DateTime?
   createdAt            DateTime  @default(now())
+
+  // Shariah screening. NOT_SCREENED until the screening engine has run against
+  // the rules the Bank's Shariah Supervisory Committee maintains.
+  shariahStatus     String    @default("NOT_SCREENED") // NOT_SCREENED | PERMITTED | REVIEW_REQUIRED | PROHIBITED
+  shariahNote       String    @default("")
+  shariahScreenedAt DateTime?
 
   categories     VendorCategory[]
   users          VendorUser[]
@@ -481,6 +488,7 @@ model PurchaseOrder {
   totalAmount         BigInt    @default(0) // poisha
   deliveryTerms       String    @default("")
   deliveryDueAt       DateTime?
+  shariahStructure    String    @default("NOT_ASSESSED")
   issuedAt            DateTime?
   issuedById          String?
   createdAt           DateTime  @default(now())
@@ -838,6 +846,8 @@ model Contract {
   retentionMoney      BigInt   @default(0)
   slaTerms            String   @default("")
   renewalNoticeDays   Int      @default(60)
+  // The Islamic contract structure this agreement is written under.
+  shariahStructure    String   @default("NOT_ASSESSED")
 
   vendor     Vendor              @relation(fields: [vendorId], references: [id])
   milestones ContractMilestone[]
@@ -932,17 +942,20 @@ model VisitorAppointment {
 }
 
 model CanteenOrder {
-  id            String   @id @default(cuid())
-  orderNo       String   @unique
-  employeeName  String
-  employeeId    String
-  department    String
-  items         String   @default("[]") // JSON
-  totalAmount   BigInt // poisha
-  orderedAt     DateTime
-  servingSlot   String
-  status        String   @default("PLACED") // PLACED | PREPARING | SERVED | CANCELLED
-  paymentStatus String   @default("PENDING_GATEWAY")
+  id              String    @id @default(cuid())
+  orderNo         String    @unique
+  employeeName    String
+  employeeId      String
+  department      String
+  items           String    @default("[]") // JSON
+  totalAmount     BigInt // poisha
+  orderedAt       DateTime
+  servingSlot     String
+  status          String    @default("PLACED") // PLACED | PREPARING | SERVED | CANCELLED
+  paymentStatus   String    @default("PENDING_GATEWAY")
+  supplierName    String    @default("")
+  halalCertNo     String    @default("")
+  halalCertExpiry DateTime?
 }
 
 model MedicalItem {
@@ -1065,4 +1078,98 @@ model CivilWorksProject {
   progressPct           Int       @default(0)
   status                String    @default("IN_PROGRESS")
   liabilityPeriodEndsAt DateTime?
+}
+
+// ---------------------------------------------------------------------------
+// SHARIAH GOVERNANCE
+//
+// Shahjalal Islami Bank PLC operates on Shariah principles. Its own RFQ does
+// not mention Shariah once, because the specification was written by the IT
+// Division as a general procurement specification. Procurement at an Islami
+// bank is nonetheless subject to the Bank's Shariah Supervisory Committee.
+//
+// IMPORTANT DESIGN POSITION: this system does not rule on Shariah questions
+// and contains no fiqh of its own. It holds the rules the Bank's own Shariah
+// Supervisory Committee has issued, applies them mechanically, and routes what
+// they catch to that Committee for a human decision. Every rule below is a
+// record the Committee owns and can change, not a judgement made by the vendor.
+// ---------------------------------------------------------------------------
+
+model ShariahRule {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  /**
+   * PROHIBITED_CATEGORY | PAYMENT_TERM | CONTRACT_STRUCTURE | CERTIFICATION
+   */
+  ruleType      String
+  name          String
+  description   String
+  /**
+   * What the Committee has decided this rule means: REVIEW | PROHIBITED | PERMITTED
+   */
+  disposition   String   @default("REVIEW")
+  /**
+   * Comma separated terms matched against the document text.
+   */
+  pattern       String   @default("")
+  /**
+   * The Committee's decision or circular this rule implements.
+   */
+  reference     String   @default("")
+  isActive      Boolean  @default(true)
+  sequence      Int      @default(0)
+  updatedAt     DateTime @updatedAt
+  updatedByName String   @default("")
+
+  flags ShariahFlag[]
+}
+
+model ShariahReview {
+  id            String    @id @default(cuid())
+  documentType  String
+  documentId    String
+  documentLabel String
+  /**
+   * MURABAHA | IJARAH | ISTISNA | SALAM | WAKALAH | NOT_APPLICABLE | NOT_ASSESSED
+   */
+  structure     String    @default("NOT_ASSESSED")
+  /**
+   * PENDING | APPROVED | APPROVED_WITH_CONDITIONS | REFERRED_BACK
+   */
+  decision      String    @default("PENDING")
+  conditions    String    @default("")
+  reference     String    @default("")
+  raisedAt      DateTime  @default(now())
+  decidedAt     DateTime?
+  decidedById   String?
+  decidedByName String    @default("")
+
+  decidedBy User?         @relation("ShariahDecidedBy", fields: [decidedById], references: [id])
+  flags     ShariahFlag[]
+
+  @@unique([documentType, documentId])
+}
+
+model ShariahFlag {
+  id            String   @id @default(cuid())
+  ruleId        String
+  reviewId      String?
+  documentType  String
+  documentId    String
+  documentLabel String
+  /**
+   * REVIEW | PROHIBITED
+   */
+  severity      String   @default("REVIEW")
+  detail        String
+  /**
+   * OPEN | CLEARED | UPHELD
+   */
+  status        String   @default("OPEN")
+  raisedAt      DateTime @default(now())
+
+  rule   ShariahRule    @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  review ShariahReview? @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+
+  @@unique([ruleId, documentType, documentId])
 }

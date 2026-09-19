@@ -42,6 +42,15 @@ const VENDORS: VendorSpec[] = [
     categories: ["IT Services"], expiryDays: 445, area: "Banani" },
   { companyName: "Surma Medical Supplies", licence: "TRAD/SCC/033445/2018", status: "APPROVED",
     categories: ["Medical"], expiryDays: 205, area: "Zindabazar, Sylhet" },
+  // A staff canteen needs a caterer, and a caterer at an Islami bank needs
+  // current halal certification. This vendor exists so that requirement is a
+  // real record in the system rather than a claim on a slide.
+  { companyName: "Bismillah Catering Services", licence: "TRAD/DNCC/061204/2023", status: "APPROVED",
+    categories: ["Catering", "Food Supply"], expiryDays: 118, area: "Mohakhali" },
+  // Vehicle supply and leasing finance sit in the same firm, which is ordinary
+  // in this market and is exactly the case the Committee wants to see.
+  { companyName: "Meherun Auto and Leasing Finance", licence: "TRAD/DNCC/049920/2021", status: "APPROVED",
+    categories: ["Transport", "Leasing Finance"], expiryDays: 332, area: "Tejgaon" },
 ];
 
 const DOC_TYPES = [

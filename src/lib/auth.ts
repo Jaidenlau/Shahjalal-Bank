@@ -87,6 +87,8 @@ export interface SessionUser {
   branchName: string | null;
   roleIds: string[];
   roleNames: string[];
+  /** Stable role codes. Business rules key off these, never off display names. */
+  roleCodes: string[];
   /** Primary role name, used for audit rows and the top bar. */
   roleName: string;
   permissions: Set<string>; // "MODULE:ACTION"
@@ -134,6 +136,7 @@ async function loadUser(userId: string): Promise<SessionUser | null> {
     branchName: u.branch?.name ?? null,
     roleIds: roles.map(r => r.id),
     roleNames: roles.map(r => r.name),
+    roleCodes: roles.map(r => r.code),
     roleName: roles[0]?.name ?? "No role",
     permissions,
     vendorId: u.vendorUser?.vendorId ?? null,

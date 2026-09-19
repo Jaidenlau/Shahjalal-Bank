@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Countdown } from "@/components/countdown";
 import { requireUser, assertCan } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { num } from "@/lib/money";
@@ -151,7 +152,7 @@ export default async function DashboardsPage({
                     <Td className="whitespace-nowrap text-ink-600">{t.publishedAt ? formatDate(t.publishedAt) : "—"}</Td>
                     <Td className="whitespace-nowrap text-ink-600">
                       {t.status === "PUBLISHED" && t.closingAt
-                        ? <span className="font-semibold text-brand-700">{countdown(t.closingAt)}</span>
+                        ? <Countdown to={t.closingAt} initial={countdown(t.closingAt)} className="font-semibold text-brand-700" />
                         : t.closingAt ? formatDate(t.closingAt) : "—"}
                     </Td>
                     <Td align="center" className="tabular">{t._count.bids}</Td>

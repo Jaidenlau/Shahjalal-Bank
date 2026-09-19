@@ -82,6 +82,8 @@ export async function seedCore(db: PrismaClient) {
       description: "Final payment approval above the configured value threshold." },
     { code: "STORE_KEEPER", name: "Store Keeper", rank: 20, isSystemRole: false,
       description: "Records goods receipt against work orders and maintains stock balances." },
+    { code: "SHARIAH", name: "Shariah Supervisory Committee", rank: 70, isSystemRole: false,
+      description: "The Bank's Shariah Supervisory Committee. Maintains the Shariah screening rules and records Shariah decisions on vendors, contracts and work orders. No other role, including the administrator, can record a decision on the Committee's behalf." },
     { code: "ADMIN", name: "System Administrator", rank: 100, isSystemRole: true,
       description: "Configures workflows, roles and permissions. Cannot edit or delete audit records." },
     { code: "VENDOR", name: "Vendor", rank: 5, isSystemRole: true,
@@ -153,8 +155,20 @@ export async function seedCore(db: PrismaClient) {
       ["GRN", "VIEW"], ["GRN", "CREATE"], ["STOCK", "VIEW"], ["STOCK", "CREATE"],
       ["WAREHOUSE", "VIEW"], ["PO", "VIEW"], ["DISPATCH", "VIEW"], ["DISPATCH", "CREATE"],
     ],
+    SHARIAH: [
+      ["SHARIAH", "VIEW"], ["SHARIAH", "APPROVE"], ["SHARIAH", "CONFIGURE"], ["SHARIAH", "EXPORT"],
+      ["VENDOR", "VIEW"], ["CONTRACT", "VIEW"], ["PO", "VIEW"], ["TENDER", "VIEW"],
+      ["CANTEEN", "VIEW"], ["REPORT", "VIEW"], ["DASHBOARD", "VIEW"], ["AUDIT", "VIEW"],
+    ],
     VENDOR: [],
   };
+
+  // Everyone who touches procurement can SEE the Shariah position of what they
+  // are working on. Only the Committee can decide it.
+  for (const code of ["PROCUREMENT", "PROCUREMENT_HEAD", "PURCHASE_COMMITTEE", "DIVISIONAL_HEAD",
+                      "MANAGING_DIRECTOR", "FINANCE_MANAGER", "CFO", "TEC"]) {
+    grants[code]!.push(["SHARIAH", "VIEW"]);
+  }
 
   // The administrator gets everything EXCEPT any write action on the audit
   // trail. There is no such permission to grant, because there is no code path
@@ -164,6 +178,11 @@ export async function seedCore(db: PrismaClient) {
   for (const m of PERMISSION_MODULES) {
     for (const a of PERMISSION_ACTIONS) {
       if (m === "AUDIT" && a !== "VIEW" && a !== "EXPORT") continue;
+      // The administrator may configure the Shariah rules the Committee gives
+      // them, but may not APPROVE — recording a Shariah decision is the
+      // Committee's act, and an administrator doing it would make the record
+      // worthless. Same principle as the audit trail above.
+      if (m === "SHARIAH" && a === "APPROVE") continue;
       adminGrants.push([m, a]);
     }
   }
@@ -196,6 +215,15 @@ export async function seedCore(db: PrismaClient) {
     { employeeId: "SJIBL/1902", fullName: "Mizanur Rahman", email: "mizanur.rahman@sjiblbd.com",
       designation: "Senior Vice President", dept: "ITD", branch: "CHO",
       roles: ["ADMIN", "DIVISIONAL_HEAD"], phone: "+880 1711-901902" },
+    // The Shariah Supervisory Committee. Two members, so a decision is never
+    // the act of a single person and the Committee can still function if one
+    // is unavailable.
+    { employeeId: "SJIBL/1104", fullName: "Mufti Sirajul Haque", email: "sirajul.haque@sjiblbd.com",
+      designation: "Member Secretary, Shariah Supervisory Committee", dept: "CSD", branch: "CHO",
+      roles: ["SHARIAH"], phone: "+880 1711-101104" },
+    { employeeId: "SJIBL/1089", fullName: "Dr. Abdul Hakim", email: "abdul.hakim@sjiblbd.com",
+      designation: "Chairman, Shariah Supervisory Committee", dept: "CSD", branch: "CHO",
+      roles: ["SHARIAH"], phone: "+880 1711-101089" },
   ];
 
   const users: Record<string, { id: string; fullName: string }> = {};

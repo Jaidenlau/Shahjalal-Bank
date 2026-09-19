@@ -1,4 +1,5 @@
 import { requireUser, assertCan } from "@/lib/auth";
+import { Countdown } from "@/components/countdown";
 import { prisma } from "@/lib/db";
 import { num } from "@/lib/money";
 import { formatDateTime, countdown } from "@/lib/date";
@@ -40,7 +41,7 @@ export default async function AuctionsPage() {
       )
       : <span className="text-ink-400">—</span> },
     { header: "Closes", className: "whitespace-nowrap", cell: l => l.status === "OPEN"
-      ? <span className="font-semibold text-brand-700">{countdown(l.endsAt)}</span>
+      ? <Countdown to={l.endsAt} initial={countdown(l.endsAt)} className="font-semibold text-brand-700" />
       : <span className="text-ink-500">{formatDateTime(l.endsAt)}</span> },
     { header: "Status", cell: l => <Pill status={l.status} /> },
   ];
