@@ -452,7 +452,31 @@ async function main() {
   else bad("laptop stock", `expected 3, got ${laptopStock?.quantityOnHand}`);
 
   // -------------------------------------------------------------------------
-  console.log("\n  6. Shariah governance — the Committee's authority is exclusive");
+  console.log("\n  6. Navigation matches authority — an approver can reach their queue");
+  // -------------------------------------------------------------------------
+  // A role that can approve something but has no menu item leading to the
+  // approvals queue can still act, but only if the user guesses the address.
+  // That is how the Finance Manager ended up able to approve a payment she
+  // could not navigate to.
+  const allRoles = await db.role.findMany({
+    include: { permissions: { include: { permission: true } } },
+  });
+  const orphaned = allRoles.filter(r => {
+    const perms = r.permissions.map(p => p.permission);
+    const canApprove = perms.some(p => p.action === "APPROVE");
+    const seesQueue = perms.some(p => p.module === "APPROVAL" && p.action === "VIEW");
+    return canApprove && !seesQueue;
+  });
+  if (orphaned.length === 0) {
+    const approvers = allRoles.filter(r => r.permissions.some(p => p.permission.action === "APPROVE"));
+    ok("every role that can approve something can see the approvals queue",
+       `${approvers.length} approving role(s) checked`);
+  } else {
+    bad("approver navigation", `${orphaned.map(r => r.name).join(", ")} can approve but cannot see My Approvals`);
+  }
+
+  // -------------------------------------------------------------------------
+  console.log("\n  7. Shariah governance — the Committee's authority is exclusive");
   // -------------------------------------------------------------------------
   const sscRole = await db.role.findFirst({ where: { code: "SHARIAH" } });
   if (sscRole) ok("the Shariah Supervisory Committee exists as a role");

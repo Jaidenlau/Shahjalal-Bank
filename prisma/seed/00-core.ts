@@ -163,6 +163,16 @@ export async function seedCore(db: PrismaClient) {
     VENDOR: [],
   };
 
+  // Anyone who can approve ANYTHING gets the approvals queue. Derived from the
+  // grants above rather than listed by hand, so a role that gains an approval
+  // power later cannot end up able to action a document with no menu item
+  // leading to it.
+  for (const [code, pairs] of Object.entries(grants)) {
+    if (pairs.some(([, action]) => action === "APPROVE")) {
+      pairs.push(["APPROVAL", "VIEW"]);
+    }
+  }
+
   // Everyone who touches procurement can SEE the Shariah position of what they
   // are working on. Only the Committee can decide it.
   for (const code of ["PROCUREMENT", "PROCUREMENT_HEAD", "PURCHASE_COMMITTEE", "DIVISIONAL_HEAD",

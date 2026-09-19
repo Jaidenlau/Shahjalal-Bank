@@ -52,8 +52,12 @@ export const MODULES: ModuleDef[] = [
   // ---- Procurement -------------------------------------------------------
   { no: 2, code: "REQUISITION", name: "Requisitions", href: "/requisitions", group: "Procurement", tier: "full", perm: "REQUISITION",
     blurb: "Pre-facto, post-facto, repair and auction requisitions with stock check, store/purchase routing and maker-checker approval." },
-  { no: 2, code: "APPROVALS", name: "My Approvals", href: "/requisitions/approvals", group: "Procurement", tier: "full", perm: "REQUISITION",
-    blurb: "The approval queue, filtered to what this user can action right now." },
+  // Its own permission, not REQUISITION. The queue carries requisitions,
+  // tenders and invoices, so tying it to the requisition permission hid it
+  // from the Finance Manager who approves payments — she could action an
+  // invoice but had no menu item leading to it.
+  { no: 1, code: "APPROVALS", name: "My Approvals", href: "/requisitions/approvals", group: "Procurement", tier: "full", perm: "APPROVAL",
+    blurb: "The approval queue across requisitions, tenders and invoices, filtered to what this user can action right now." },
   { no: 3, code: "TENDER", name: "Tenders", href: "/tenders", group: "Procurement", tier: "full", perm: "TENDER",
     blurb: "OTM, LTM, quotation, direct purchase and two-stage methods, with committee configuration and two-envelope opening." },
   { no: 6, code: "VENDOR", name: "Vendors", href: "/vendors", group: "Procurement", tier: "data", perm: "VENDOR",

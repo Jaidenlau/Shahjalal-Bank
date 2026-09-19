@@ -3,7 +3,7 @@ import { approvalQueue, ownInFlight } from "@/lib/queries";
 import { formatDateTime, ageInDays, addHours } from "@/lib/date";
 import {
   Card, CardHeader, PageHeader, Pill, Money, Table, Th, Td, Tr,
-  LinkCell, EmptyRow, Icon, Stat, Note,
+  LinkCell, EmptyRow, Icon, Stat, Note, ButtonLink,
 } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -56,11 +56,12 @@ export default async function ApprovalsPage() {
                 <Th>Step</Th>
                 <Th>Workflow</Th>
                 <Th align="right">Waiting</Th>
+                <Th width="150px" align="right">Action</Th>
               </tr>
             </thead>
             <tbody>
               {queue.length === 0 ? (
-                <EmptyRow colSpan={8}>
+                <EmptyRow colSpan={9}>
                   Nothing is waiting on you. Items you raised yourself never appear here.
                 </EmptyRow>
               ) : queue.map(q => {
@@ -91,6 +92,12 @@ export default async function ApprovalsPage() {
                       ) : (
                         <span className="text-ink-600 tabular">{ageInDays(q.startedAt)}d</span>
                       )}
+                    </Td>
+                    <Td align="right">
+                      <ButtonLink href={q.href} variant="primary" className="px-3 py-1.5 text-[12.5px]">
+                        Review &amp; approve
+                        <Icon name="arrowRight" className="h-3.5 w-3.5" />
+                      </ButtonLink>
                     </Td>
                   </Tr>
                 );
