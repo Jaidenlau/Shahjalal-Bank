@@ -8,6 +8,7 @@ import { seedProcurement } from "./seed/40-procurement";
 import { seedPurchase } from "./seed/45-purchase";
 import { seedModules } from "./seed/50-modules";
 import { seedShariah } from "./seed/55-shariah";
+import { seedIntegrityCases } from "./seed/57-integrity";
 import { seedAudit } from "./seed/60-audit";
 import { seedSystem } from "./seed/70-system";
 
@@ -144,6 +145,10 @@ async function main() {
     dept: core.dept, branch: core.branch, users: core.users, vendors: vendorData.vendors,
   });
   done();
+
+  step("integrity cases");
+  const integrity = await seedIntegrityCases(db, core.users);
+  done(`${integrity.planted.length} planted patterns`);
 
   step("shariah governance");
   const shariah = await seedShariah(db, core.users);

@@ -13,6 +13,7 @@ import { assertPoMatchesRequisition, buildValidationContext, threeWayMatch } fro
 import { isControlViolation } from "../src/lib/errors";
 import { formatBDT, num } from "../src/lib/money";
 import { recordShariahDecision, ShariahAuthorityError, collectTargets } from "../src/lib/shariah";
+import { runIntegrityScan, DETECTORS } from "../src/lib/integrity";
 import { matchRule } from "../src/lib/shariah-types";
 
 const db = new PrismaClient();
@@ -476,7 +477,63 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  console.log("\n  7. Shariah governance — the Committee's authority is exclusive");
+  console.log("\n  7. Procurement integrity — the tests find what was planted");
+  // -------------------------------------------------------------------------
+  const scan = await runIntegrityScan(db);
+  if (scan.findings.length > 0) {
+    ok("the integrity scan returns findings", `${scan.findings.length} finding(s), ${formatBDT(scan.exposure)} under question`);
+  } else {
+    bad("integrity scan", "returned nothing — an empty screen proves nothing to anybody");
+  }
+
+  // The planted split purchase must be caught, or the test does not work.
+  const split = scan.findings.find(f => f.code === "SPLIT_PURCHASE" && f.references.includes("PO/CSD/2026/0392"));
+  if (split) ok("the split purchase is detected", split.subject);
+  else bad("split purchase detection", "the three planted orders to Shahjahan Furnishers were not caught");
+
+  const cluster = scan.findings.find(f => f.code === "BID_CLUSTERING");
+  if (cluster) ok("clustered bids are detected", cluster.subject);
+  else bad("bid clustering detection", "the planted cluster was not caught");
+
+  const drift = scan.findings.find(f => f.code === "PRICE_DRIFT");
+  if (drift) ok("price drift is detected", drift.subject);
+  else bad("price drift detection", "the planted drift was not caught");
+
+  const sole = scan.findings.find(f => f.code === "SINGLE_BID");
+  if (sole) ok("a tender with one bid is detected", sole.subject);
+  else bad("single bid detection", "the planted single-bid tender was not caught");
+
+  // Every finding must be traceable to a named test with a stated threshold.
+  const untraceable = scan.findings.filter(f => !DETECTORS[f.code]);
+  if (untraceable.length === 0) ok("every finding names the test and threshold that produced it");
+  else bad("finding provenance", `${untraceable.length} finding(s) cite no test`);
+
+  // A finding must never read as an accusation. Nothing here may assert intent.
+  const accusatory = scan.findings.filter(f => /fraud|corrupt|deliberate|dishonest|collusion/i.test(f.detail));
+  if (accusatory.length === 0) {
+    ok("no finding asserts wrongdoing", "every one is written as a question with an innocent reading available");
+  } else {
+    bad("finding tone", `${accusatory.length} finding(s) assert intent the system cannot know`);
+  }
+
+  // Bid spreads must not be uniform, or the seeded data looks generated.
+  const tendersWithBids = await db.tender.findMany({
+    where: { technicalEvaluationCompletedAt: { not: null } },
+    include: { bids: { include: { financialPart: true } } },
+  });
+  const spreads = tendersWithBids
+    .map(t => t.bids.filter(b => b.financialPart).map(b => Number(b.financialPart!.totalAmount)))
+    .filter(a => a.length >= 3)
+    .map(a => Number((((Math.max(...a) - Math.min(...a)) / Math.min(...a)) * 100).toFixed(1)));
+  const distinct = new Set(spreads).size;
+  if (spreads.length === 0 || distinct >= Math.max(3, Math.floor(spreads.length * 0.6))) {
+    ok("bid spreads vary naturally across tenders", `${distinct} distinct spreads across ${spreads.length} tenders`);
+  } else {
+    bad("bid spread realism", `only ${distinct} distinct spreads across ${spreads.length} tenders — the data looks generated`);
+  }
+
+  // -------------------------------------------------------------------------
+  console.log("\n  8. Shariah governance — the Committee's authority is exclusive");
   // -------------------------------------------------------------------------
   const sscRole = await db.role.findFirst({ where: { code: "SHARIAH" } });
   if (sscRole) ok("the Shariah Supervisory Committee exists as a role");

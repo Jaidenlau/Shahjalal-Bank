@@ -16,7 +16,7 @@ const PAGES = [
   "/transport", "/visitors", "/canteen", "/medical", "/insurance", "/auctions",
   "/dispatch", "/building", "/civil-works", "/dashboards", "/reports",
   "/admin/workflows", "/admin/audit", "/admin/users", "/admin/roles",
-  "/admin/integrations", "/about", "/shariah",
+  "/admin/integrations", "/about", "/shariah", "/integrity",
 ];
 
 const br = await chromium.launch({ executablePath: CHROME, args: ["--no-sandbox"] });

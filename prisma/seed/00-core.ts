@@ -173,6 +173,14 @@ export async function seedCore(db: PrismaClient) {
     }
   }
 
+  // Integrity findings are an internal-audit surface: the people who can act
+  // on them, plus those whose decisions they examine, so nobody is being
+  // measured by something they cannot see.
+  for (const code of ["PROCUREMENT", "PROCUREMENT_HEAD", "PURCHASE_COMMITTEE", "DIVISIONAL_HEAD",
+                      "MANAGING_DIRECTOR", "FINANCE_MANAGER", "CFO"]) {
+    grants[code]!.push(["INTEGRITY", "VIEW"], ["INTEGRITY", "EXPORT"]);
+  }
+
   // Everyone who touches procurement can SEE the Shariah position of what they
   // are working on. Only the Committee can decide it.
   for (const code of ["PROCUREMENT", "PROCUREMENT_HEAD", "PURCHASE_COMMITTEE", "DIVISIONAL_HEAD",

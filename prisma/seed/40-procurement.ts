@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { requisitionNo, tenderNo } from "../../src/lib/docno";
 import { num } from "../../src/lib/money";
-import { daysAgo, daysAhead, int, pick, pickMany, weighted, chance } from "./rng";
+import { daysAgo, daysAhead, int, pick, pickMany, weighted, chance, rnd } from "./rng";
 import { buildInstance, stepsForDefinition } from "./helpers";
 
 /**
@@ -394,7 +394,10 @@ export async function seedProcurement(
     // Bids
     const bidders = pickMany(approvedVendors, int(3, 4));
     for (const [j, v] of bidders.entries()) {
-      const spread = 0.88 + j * 0.045;
+      // Real bidders do not price on a ladder. Without jitter every tender in
+      // the database came out with an identical spread, which is the kind of
+      // detail a sharp reviewer notices before anything else on the screen.
+      const spread = 0.86 + j * (0.035 + rnd() * 0.035) + (rnd() - 0.5) * 0.03;
       const amount = Math.round((t.value * spread) / 1000_00) * 1000_00;
       const status = t.status === "AWARDED"
         ? (j === 0 ? "AWARDED" : j === bidders.length - 1 ? "TECHNICAL_DISQUALIFIED" : "TECHNICAL_QUALIFIED")
