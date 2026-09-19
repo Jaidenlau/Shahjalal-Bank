@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createHash, randomBytes, timingSafeEqual, scryptSync } from "node:crypto";
 import { prisma } from "./db";
 import { PermissionDenied } from "./errors";
@@ -155,16 +156,25 @@ export async function currentVendorUser(): Promise<SessionUser | null> {
   return u?.userType === "VENDOR" ? u : null;
 }
 
-/** For server components that must have a user. */
+/**
+ * For server components and actions that must have a user.
+ *
+ * This redirects rather than throwing. A layout redirect is not enough on its
+ * own: in the App Router a layout and the page inside it render in parallel,
+ * so a page calling this would still throw before the layout's redirect landed,
+ * and Next would log the thrown error to the terminal. Nothing was broken by
+ * that, but a red error line on the terminal during a demo is a question the
+ * presenter has to answer, so the guard redirects at the point it fails.
+ */
 export async function requireUser(): Promise<SessionUser> {
   const u = await currentUser();
-  if (!u) throw new Error("UNAUTHENTICATED");
+  if (!u) redirect("/login");
   return u;
 }
 
 export async function requireVendorUser(): Promise<SessionUser> {
   const u = await currentVendorUser();
-  if (!u) throw new Error("UNAUTHENTICATED_VENDOR");
+  if (!u) redirect("/vendor/login");
   return u;
 }
 
